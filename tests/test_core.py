@@ -20,7 +20,9 @@ def action(target='http://127.0.0.1:8765/',**kwargs):
 
 def nmap(state='open',reason='syn-ack',ip='127.0.0.1',version='1.05',exit='success'):
     # Handwritten schema fixture: NOT a genuine scanner output or demonstration artifact.
-    return f'<nmaprun scanner="nmap" xmloutputversion="{version}"><host endtime="1"><status state="up"/><address addr="{ip}" addrtype="ipv4"/><ports><port protocol="tcp" portid="8765"><state state="{state}" reason="{reason}"/></port></ports></host><runstats><finished exit="{exit}"/></runstats></nmaprun>'.encode()
+    from datetime import datetime,timezone
+    collected=int(datetime.now(timezone.utc).timestamp())
+    return f'<nmaprun scanner="nmap" xmloutputversion="{version}"><host endtime="{collected}"><status state="up"/><address addr="{ip}" addrtype="ipv4"/><ports><port protocol="tcp" portid="8765"><state state="{state}" reason="{reason}"/></port></ports></host><runstats><finished exit="{exit}"/></runstats></nmaprun>'.encode()
 
 
 @pytest.mark.parametrize('target',['http://127.0.0.2:8765/','http://127.0.0.1:22/','http://1.1.1.1:8765/'])

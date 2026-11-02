@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 from coverageproof.app import create_app
-from coverageproof.domain import Action, Receipt, State
+from coverageproof.domain import Action, Receipt, State, now
 from coverageproof.planner import plan, model_context
 from coverageproof.report import generate
 
@@ -145,5 +145,5 @@ def test_completed_development_plan_is_not_proposed_again(store,scope,monkeypatc
     a=store.create('Check response',scope)
     c=store.add_check(a,Action(check='header-nosniff',target='http://127.0.0.1:8765/',scope_revision=1))
     attempt,_,_=store.claim(c,store.approve(c,'Analyst'))
-    store.finish(attempt,'completed','Synthetic test receipt',b'test',Receipt(target='http://127.0.0.1:8765/',check='header-nosniff',outcome=State.NOT_OBSERVED,detail='Synthetic development fixture only',source_ref='test'))
+    store.finish(attempt,'completed','Synthetic test receipt',b'test',Receipt(target='http://127.0.0.1:8765/',check='header-nosniff',outcome=State.NOT_OBSERVED,detail='Synthetic development fixture only',source_ref='test',observed_at=now()))
     assert plan(store,a).checks==[]

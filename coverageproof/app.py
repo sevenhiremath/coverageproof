@@ -74,6 +74,13 @@ def create_app(db_path=None):
         store.add_check(id,Action.model_validate_json(action_json))
         return RedirectResponse(f'/assessments/{id}',303)
 
+    @app.post('/checks/{id}/applicability')
+    def applicability(id: str, decision: str=Form(), note: str=Form(), actor: str=Form()):
+        store.set_applicability(id,decision,note,actor)
+        with store.tx() as db:
+            c,_,_ = store.check_context(db,id)
+        return RedirectResponse(f'/assessments/{c["assessment"]}',303)
+
     @app.post('/checks/{id}/approve')
     def approve(request: Request,id: str,actor: str=Form()):
         store.approve(id,actor)

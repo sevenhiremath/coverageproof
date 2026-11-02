@@ -1,0 +1,24 @@
+name: Check the app
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build test image
+        run: docker build -f Dockerfile.tests -t coverageproof-tests .
+      - name: Run tests without external networking
+        run: >-
+          docker run --rm --network none --cap-drop ALL
+          --security-opt no-new-privileges --read-only
+          --tmpfs /tmp:rw,nosuid,nodev,size=256m
+          --memory 1g --cpus 2 --pids-limit 128 coverageproof-tests

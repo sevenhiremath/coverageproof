@@ -19,7 +19,7 @@ python -m uvicorn coverageproof.app:app --host 127.0.0.1 --port 8000
 Open http://127.0.0.1:8000. Windows: activate with `.venv\Scripts\Activate.ps1`. Configuration is documented in `.env.example`; export environment variables explicitly (no automatic dotenv loading). Database defaults to `data/coverageproof.sqlite` and persists across restarts. Keep it private; it contains raw assessment evidence.
 
 1. Create a request with an explicitly authorized literal-IP network scope and allowed ports.
-2. Generate a plan (explicitly labeled deterministic development mode unless model secrets configured).
+2. Generate a plan (explicitly labeled deterministic development mode unless the Ollama or API provider is configured).
 3. Inspect a declared check, approve the exact HTTP action, then execute it against your own fixture.
 4. Import native scanner outputs for already-declared exact targets; imports remain labeled imports.
 5. Inspect observations and gaps. Download the assessment PDF.
@@ -70,3 +70,12 @@ The provider calls `http://127.0.0.1:11434/api/chat`, requests JSON matching the
 Inspect a candidate's source evidence, enter a review reason and choose accepted for report, false positive or needs review. New evidence invalidates the earlier review. False positives remain available for traceability. Imported observations without matching declared checks are displayed separately and can be added to the plan after inspection.
 
 The current app also groups the documented ZAP nosniff rule with the corresponding HTTP check at an exact URL, preserves contradictions/source severity differences, and lets analysts record risk context with reasons and evidence references. The rules are intentionally limited; see the grouping and risk document for alternatives and drawbacks.
+
+## Reproduce the isolated backend checks
+
+```bash
+docker build -f Dockerfile.tests -t coverageproof-tests .
+docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --memory 1g --cpus 2 --pids-limit 128 coverageproof-tests
+```
+
+Image build downloads dependencies. Test runtime has no external network; owned loopback fixtures still work. This job does not run native scanners or Ollama. See GitHub Actions for the actual container result.
