@@ -8,6 +8,7 @@ from uuid import uuid4
 from .adapters import parse
 from .correlation import correlate, risk_key, explain_risk
 from .freshness import freshness
+from .coverage_view import summarize, REASONS
 from .domain import Action, Scope, Receipt, State, CHECKS, action_fingerprint, canonical_target, coverage, digest, now, validate_scope
 
 
@@ -230,7 +231,7 @@ class Store:
                         state = State.NOT_APPLICABLE
                 for o, r in zip(observations, receipts):
                     observation_rows.append({'id':o['id'],'artifact':o['artifact'],'tool':tools[o['artifact']],'receipt':r})
-                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'applicability':applicability, 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
+                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'state_reason':REASONS[state], 'applicability':applicability, 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
             findings=correlate(observation_rows)
             by_id={o['id']:o for c in checks for o in c['observations']}
             for f in findings:
@@ -248,6 +249,7 @@ class Store:
             ranked = sorted(findings, key=risk_key)
             snapshot = {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
 
+            snapshot['coverage_summary']=summarize(checks)
             from .narrative import basis
             draft=next((e for e in reversed(snapshot['events']) if e['kind']=='report_drafted'),None)
             current=basis(snapshot)
