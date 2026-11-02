@@ -44,3 +44,7 @@ See CORRELATION_AND_RISK.md for the alternatives table, exact matching boundarie
 ## Why AI report text needs a separate review
 
 The model can draft an executive explanation and limitations, but that prose cannot change findings or coverage. Each statement must cite declared checks and their actual observations. The draft is tied to the assessment state, and only a current analyst-accepted draft enters the PDF. Alternative: include every generated paragraph immediately. We rejected that because valid JSON and real citations do not prove the wording is true. Benefit: explicit review and stale-draft exclusion. Drawback: the analyst must still judge the meaning; actual local-model output quality remains unverified. The unit tests use mocked prose, not live AI.
+
+## Interrupted execution
+
+A manual, attributed recovery command closes one interrupted attempt as failed after all workers are stopped. We chose this over automatic startup resets or automatic retries because a request might already have reached the target. Its benefits, alternatives, stop-attestation limitation and regression checks are in [RECOVERY.md](RECOVERY.md). This is local operator recovery, not a distributed job scheduler.

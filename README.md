@@ -95,3 +95,5 @@ The first genuine native Nmap recording is in [samples/recorded-nmap](samples/re
 ![Owned browser test showing an unanswered declared check](samples/browser-check/before-followup.png)
 
 [Before/after captures and test summary](samples/browser-check/README.md). Real Chromium and owned HTTP receipts; development planning and a synthetic report-review provider are explicitly labeled. This does not replace the pending real-model demonstration.
+
+If a crash leaves a check marked running, follow [interrupted-check recovery](docs/RECOVERY.md). Stop all workers first. Recovery keeps the failed state and consumed approval; it never retries an action automatically.

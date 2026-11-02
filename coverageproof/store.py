@@ -1,5 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
+from datetime import datetime
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -164,6 +165,31 @@ class Store:
                 if receipt:
                     db.execute('INSERT INTO observations VALUES(?,?,?,?)', (uid(), row['id'], artifact, receipt.model_dump_json()))
             self.event(db, row['assessment'], 'execution_finished', {'attempt': attempt, 'status': status, 'detail': detail})
+
+    def recover_attempt(self, attempt, actor, note, *, workers_stopped=False):
+        """Close an interrupted record only after the operator stops every worker.
+
+        Age is a guard against mistakes, not proof that a process has stopped.
+        No evidence is inferred, approval restored or action retried.
+        """
+        if not workers_stopped:
+            raise ValueError('Stop every worker using this database and confirm workers_stopped')
+        if not 1 <= len(actor.strip()) <= 200 or not 12 <= len(note.strip()) <= 2000:
+            raise ValueError('Analyst identity and recovery reason required')
+        with self.tx() as db:
+            a = db.execute("SELECT * FROM attempts WHERE id=? AND status='running'", (attempt,)).fetchone()
+            if a is None:
+                raise ValueError('Attempt is not running')
+            age = (datetime.fromisoformat(now()) - datetime.fromisoformat(a['created'])).total_seconds()
+            if age < 60:
+                raise ValueError('Wait at least 60 seconds after the recorded start; stop all workers first')
+            row, _, _ = self.check_context(db, a['check_id'])
+            detail = 'Interrupted execution closed by operator; no completed result is inferred. ' + note.strip()
+            db.execute("UPDATE attempts SET status='failed',detail=? WHERE id=?", (detail, attempt))
+            self.event(db, row['assessment'], 'execution_recovered', {
+                'attempt': attempt, 'check_id': a['check_id'], 'status': 'failed',
+                'actor': actor.strip(), 'note': note.strip(), 'workers_stopped_attested': True,
+                'detail': detail})
 
     def ingest(self, assessment, tool, raw):
         try:
