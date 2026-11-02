@@ -1,0 +1,23 @@
+# Local ChatGPT handoff: scanner environment and real evidence only
+
+Give the local coding assistant this file and the latest CoverageProof_Checkpoint_1.zip (which includes source, git history and docs). Also attach PS-1 and the written rules if that assistant cannot read them from this conversation. This is the same GitHub account, but a separate working directory.
+
+## Paste this task
+
+You are helping with the LOCAL part of CoverageProof, our PS-1 DataOps Innovation Hackathon project. Online ChatGPT Work owns the app, scope policy, parsers, AI planning, interface and reporting. Your task is only to inspect local capabilities and prepare the smallest isolated, self-owned lab that can produce genuine Nmap, Nikto and OWASP ZAP artifacts. Do not redesign or rebuild the product.
+
+First read README.md, docs/STATUS.md, docs/INTEGRATIONS.md, docs/ORIENTATION_2026-11-02.md and docs/LOCAL_SCANNER_TASK.md. The orientation requires isolated tests and no effect on unrelated applications. The older bare-host scanner commands in LOCAL_SCANNER_TASK.md must not be used as evaluation instructions without this isolation requirement. Do not run scanners on the normal host just because the old example uses loopback.
+
+1. Restore the source into a separate folder. If using the zip, preserve history with `git clone coverageproof-history.bundle coverageproof-local`. Inspect `git status` and existing branches. If the shared GitHub repository exists, fetch it and create `local/scanner-fixtures` from the agreed branch. Do not force-push or overwrite another contributor's changes.
+2. Run `python scripts/inspect_local.py` from the restored repository. This only checks available tools and versions, not target services. Return the JSON before choosing OS-specific scanner setup commands. Do not dump environment variables, credentials or personal directory listings. Do not install software or change host/firewall settings without a concrete need and appropriate authorization.
+3. If Docker or a disposable VM is available, prepare a self-owned isolated lab. Keep scanner-to-target traffic within the lab; do not use host networking, privileged containers or published vulnerable-service ports. Container images and dependencies may be obtained during setup, but scanner runtime should have no external egress. Use network rules/topology suitable for the observed platform; document and verify actual containment. If no isolated runtime is available, stop scanner execution and return that limitation plus minimal setup instructions.
+4. Record the allowed network, exact target address/ports, exclusions, tool configuration and self-owned authorization reference. This does NOT establish organizer evaluation authorization. Use only bounded scanner templates; no credential attacks, exploit modules or broad/public scans.
+5. Produce a small script or commands for genuine Nmap XML, Nikto multi-host JSON and ZAP traditional JSON from the authorized fixture. Inspect installed versions first; record actual versions, commands, timestamps, exit status and artifact hashes. Preserve scanner errors and output as generated. Never edit a result to make a parser test pass. Do not execute unfamiliar GitHub projects to investigate them.
+6. Before running active web checks, present the exact lab-bound commands and collect the required approval. The user's authorization for building a lab is not approval for arbitrary later offensive validation. The isolated fixture can be benign; do not invent vulnerabilities for a better demo.
+7. Return a `scanner-artifacts.zip` containing genuine raw outputs, `manifest.json`, `lab-scope.json`, containment/setup notes and any precise parser mismatch. Manifest entries should include source=recorded_genuine, tool/version, exact target/configuration, command, start/end times, exit status, SHA256 and known limitations. Do not include API keys, tokens or unrelated host data.
+8. Keep source changes under `local-lab/` and your branch; do not change coverageproof/ or parser contracts. Use plain commits such as 'Add a small lab for scanner checks'. Send the branch/commit and artifact bundle back to online Work. If GitHub is not ready, return a patch plus artifacts; do not claim a push succeeded.
+
+Expected first reply: OS/runtime/tool availability JSON and the next smallest setup step. Expected eventual delivery: genuine scanner evidence plus a reproducible, verified isolated-lab setup. A screenshot alone is not enough.
+
+## What stays online
+Backend and approval logic, format fixes/tests after receiving outputs, AI planning and evidence checks, report and interface work, and submission preparation. API secrets should be configured through supported secret handling only; never pasted into chat or committed.

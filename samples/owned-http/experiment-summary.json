@@ -1,0 +1,25 @@
+{
+  "sample_size": 2,
+  "check": "one response X-Content-Type-Options condition per exact URL",
+  "source": "genuine self-owned HTTP fixture, not native scanner execution",
+  "baseline_counts": [
+    1,
+    1
+  ],
+  "before_states": [
+    [
+      "finding_supported",
+      "condition_not_observed"
+    ],
+    [
+      "finding_supported",
+      "unattempted"
+    ]
+  ],
+  "after_states": [
+    "finding_supported",
+    "condition_not_observed"
+  ],
+  "planner_mode": "development",
+  "limitations": "Two scripted HTTP assessments only. No general accuracy or time-saving claim. Mandatory three-tool and live AI validation still pending."
+}

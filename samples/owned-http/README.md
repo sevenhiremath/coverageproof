@@ -1,0 +1,1 @@
+Genuine responses from a self-owned Python HTTP fixture, recorded by scripts/experiment.py. Not native scanner output. Port is ephemeral; authorization is development-only. JSON snapshots preserve exact targets, timestamps, approvals and evidence hashes. Planner mode is deterministic development. See experiment-summary.json for the equal-count comparison.

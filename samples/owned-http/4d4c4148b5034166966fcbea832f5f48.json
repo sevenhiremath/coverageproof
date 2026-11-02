@@ -1,0 +1,284 @@
+{
+  "id": "4d4c4148b5034166966fcbea832f5f48",
+  "request": "B: admin surface unattempted",
+  "created": "2026-11-02T09:56:33.165652+00:00",
+  "scope": {
+    "name": "Owned HTTP experiment",
+    "revision": 1,
+    "networks": [
+      "127.0.0.1/32"
+    ],
+    "ports": [
+      41567
+    ],
+    "exclusions": [],
+    "authorization_reference": "Self-owned Python HTTP fixture; not organizer authorization",
+    "environment": "self-owned-development"
+  },
+  "checks": [
+    {
+      "id": "2a0c283c94cd416d9be59724e16cd261",
+      "action": {
+        "check": "header-nosniff",
+        "target": "http://127.0.0.1:41567/",
+        "port": null,
+        "scope_revision": 1
+      },
+      "condition": "X-Content-Type-Options is absent or differs from nosniff",
+      "state": "finding_supported",
+      "observations": [
+        {
+          "id": "9e02bae1b5ec4c57a9abd69a248a1597",
+          "check_id": "2a0c283c94cd416d9be59724e16cd261",
+          "artifact": "ddd96dcc981f4f539070dead43f8c784",
+          "receipt": {
+            "target": "http://127.0.0.1:41567/",
+            "check": "header-nosniff",
+            "outcome": "finding_supported",
+            "detail": "GET http://127.0.0.1:41567/; HTTP 200; nosniff=False. Only this response and condition assessed; redirects not followed.",
+            "source_ref": "HTTP response headers",
+            "issue_class": "header:x-content-type-options",
+            "title": "Missing or unexpected X-Content-Type-Options",
+            "severity": "low",
+            "confidence": "direct response observation",
+            "observed_at": "2026-11-02T09:56:33.186294+00:00",
+            "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types."
+          }
+        }
+      ],
+      "attempts": [
+        {
+          "id": "ee022c06bfc0411c891bc580c706ac96",
+          "check_id": "2a0c283c94cd416d9be59724e16cd261",
+          "status": "completed",
+          "detail": "One response recorded; no broader security conclusion.",
+          "created": "2026-11-02T09:56:33.176816+00:00"
+        }
+      ]
+    },
+    {
+      "id": "2dc1ddccd13940fc8dbadef70513045f",
+      "action": {
+        "check": "header-nosniff",
+        "target": "http://127.0.0.1:41567/admin",
+        "port": null,
+        "scope_revision": 1
+      },
+      "condition": "X-Content-Type-Options is absent or differs from nosniff",
+      "state": "condition_not_observed",
+      "observations": [
+        {
+          "id": "cb5917a4529d408d9a30f340733cedea",
+          "check_id": "2dc1ddccd13940fc8dbadef70513045f",
+          "artifact": "9eb2c77f9fe04da2b90bb67469a53317",
+          "receipt": {
+            "target": "http://127.0.0.1:41567/admin",
+            "check": "header-nosniff",
+            "outcome": "condition_not_observed",
+            "detail": "GET http://127.0.0.1:41567/admin; HTTP 200; nosniff=True. Only this response and condition assessed; redirects not followed.",
+            "source_ref": "HTTP response headers",
+            "issue_class": null,
+            "title": null,
+            "severity": "unknown",
+            "confidence": "direct response observation",
+            "observed_at": "2026-11-02T09:56:33.207763+00:00",
+            "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types."
+          }
+        }
+      ],
+      "attempts": [
+        {
+          "id": "ff69888e8ff74bffbd487dc8bdd35212",
+          "check_id": "2dc1ddccd13940fc8dbadef70513045f",
+          "status": "completed",
+          "detail": "One response recorded; no broader security conclusion.",
+          "created": "2026-11-02T09:56:33.197273+00:00"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "2dc37896475e",
+      "asset": "http://127.0.0.1:41567/",
+      "issue_class": "header:x-content-type-options",
+      "title": "Missing or unexpected X-Content-Type-Options",
+      "severity": "low",
+      "confidence": "direct response observation",
+      "status": "suspected; analyst review required",
+      "evidence": [
+        {
+          "observation": "9e02bae1b5ec4c57a9abd69a248a1597",
+          "artifact": "ddd96dcc981f4f539070dead43f8c784",
+          "source_ref": "HTTP response headers"
+        }
+      ],
+      "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types.",
+      "impact": "Not independently established; depends on affected asset and validation.",
+      "cvss": null
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "ddd96dcc981f4f539070dead43f8c784",
+      "tool": "http",
+      "mode": "live",
+      "sha256": "762f90e22634abf0a0fdde879646f76db1dfe844e2c6fde5f6e967ed8a855f21",
+      "created": "2026-11-02T09:56:33.186872+00:00"
+    },
+    {
+      "id": "9eb2c77f9fe04da2b90bb67469a53317",
+      "tool": "http",
+      "mode": "live",
+      "sha256": "747209c7b421c8d793a730ae341147b23be1954d380b0134f6f8e3fcbdfde845",
+      "created": "2026-11-02T09:56:33.208430+00:00"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "3a49b494b5d34b8da177afdae3e94a0b",
+      "check_id": "2a0c283c94cd416d9be59724e16cd261",
+      "fingerprint": "525cb342c4aba4c404353cb212743d42fa30de8304ea67f93e4b4e2874a2be1b",
+      "actor": "Owned fixture experiment",
+      "created": "2026-11-02T09:56:33.173614+00:00",
+      "consumed": "2026-11-02T09:56:33.176793+00:00"
+    },
+    {
+      "id": "af3cbcd3d48149759d90b1bd3fd59926",
+      "check_id": "2dc1ddccd13940fc8dbadef70513045f",
+      "fingerprint": "07528b6b32ea39e220a9bf0c1f266ee6e005abfd58d044ad2322af4a4190b6e3",
+      "actor": "Owned fixture follow-up",
+      "created": "2026-11-02T09:56:33.194625+00:00",
+      "consumed": "2026-11-02T09:56:33.197209+00:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "64cd7ab24b7e4ea1934a44b63acd1b98",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "assessment_created",
+      "payload": {
+        "environment": "self-owned-development"
+      },
+      "created": "2026-11-02T09:56:33.165733+00:00"
+    },
+    {
+      "id": "49f4f5252e074d089909a033b4d883f8",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "check_planned",
+      "payload": {
+        "check_id": "2a0c283c94cd416d9be59724e16cd261",
+        "action": {
+          "check": "header-nosniff",
+          "target": "http://127.0.0.1:41567/",
+          "port": null,
+          "scope_revision": 1
+        }
+      },
+      "created": "2026-11-02T09:56:33.168208+00:00"
+    },
+    {
+      "id": "9f2a02311ae7405f8794c671e5f1d64c",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "check_planned",
+      "payload": {
+        "check_id": "2dc1ddccd13940fc8dbadef70513045f",
+        "action": {
+          "check": "header-nosniff",
+          "target": "http://127.0.0.1:41567/admin",
+          "port": null,
+          "scope_revision": 1
+        }
+      },
+      "created": "2026-11-02T09:56:33.170795+00:00"
+    },
+    {
+      "id": "1525a0fec5964527ac4d685b5616159b",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "action_approved",
+      "payload": {
+        "approval": "3a49b494b5d34b8da177afdae3e94a0b",
+        "fingerprint": "525cb342c4aba4c404353cb212743d42fa30de8304ea67f93e4b4e2874a2be1b",
+        "actor": "Owned fixture experiment"
+      },
+      "created": "2026-11-02T09:56:33.173642+00:00"
+    },
+    {
+      "id": "91e4fd60b33c43bab6f3e85d323da38c",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "execution_started",
+      "payload": {
+        "attempt": "ee022c06bfc0411c891bc580c706ac96",
+        "check_id": "2a0c283c94cd416d9be59724e16cd261"
+      },
+      "created": "2026-11-02T09:56:33.176834+00:00"
+    },
+    {
+      "id": "925f88db69124714926586afb212dc1c",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "execution_finished",
+      "payload": {
+        "attempt": "ee022c06bfc0411c891bc580c706ac96",
+        "status": "completed",
+        "detail": "One response recorded; no broader security conclusion."
+      },
+      "created": "2026-11-02T09:56:33.186940+00:00"
+    },
+    {
+      "id": "5902a033bd554c3ea4c338cefc487f9e",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "planning_decision",
+      "payload": {
+        "mode": "development",
+        "explanation": "DETERMINISTIC DEVELOPMENT MODE. Rule-based planning only; no language model has interpreted the request. Live AI reasoning remains a submission blocker.",
+        "checks": [
+          {
+            "action": {
+              "check": "header-nosniff",
+              "target": "http://127.0.0.1:41567/admin",
+              "port": null,
+              "scope_revision": 1
+            },
+            "rationale": "Development rule: declared condition remains unattempted. This is an assessment gap, not evidence of a vulnerability. Collect a bounded receipt for this exact target.",
+            "evidence_ids": [
+              "9e02bae1b5ec4c57a9abd69a248a1597"
+            ]
+          }
+        ]
+      },
+      "created": "2026-11-02T09:56:33.191866+00:00"
+    },
+    {
+      "id": "009b3dbd0ff5436a9be188b1e130303a",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "action_approved",
+      "payload": {
+        "approval": "af3cbcd3d48149759d90b1bd3fd59926",
+        "fingerprint": "07528b6b32ea39e220a9bf0c1f266ee6e005abfd58d044ad2322af4a4190b6e3",
+        "actor": "Owned fixture follow-up"
+      },
+      "created": "2026-11-02T09:56:33.194657+00:00"
+    },
+    {
+      "id": "b1967209e662491985f47497a04ddcdb",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "execution_started",
+      "payload": {
+        "attempt": "ff69888e8ff74bffbd487dc8bdd35212",
+        "check_id": "2dc1ddccd13940fc8dbadef70513045f"
+      },
+      "created": "2026-11-02T09:56:33.197296+00:00"
+    },
+    {
+      "id": "b346620db00942e6b7a0e21b5c8af377",
+      "assessment": "4d4c4148b5034166966fcbea832f5f48",
+      "kind": "execution_finished",
+      "payload": {
+        "attempt": "ff69888e8ff74bffbd487dc8bdd35212",
+        "status": "completed",
+        "detail": "One response recorded; no broader security conclusion."
+      },
+      "created": "2026-11-02T09:56:33.208622+00:00"
+    }
+  ]
+}
