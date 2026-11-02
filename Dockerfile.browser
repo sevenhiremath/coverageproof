@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/playwright/python:v1.64.1-noble
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY coverageproof ./coverageproof
+COPY scripts ./scripts
+COPY local-lab ./local-lab
+RUN pip install --no-cache-dir '.[test]' playwright==1.64.1 && useradd --uid 10001 --create-home verifier && mkdir /artifacts && chown verifier /artifacts
+USER 10001
+ENV PYTHONDONTWRITEBYTECODE=1 COVERAGEPROOF_DB=/tmp/browser-state.sqlite COVERAGEPROOF_PROVIDER=development BROWSER_OUTPUT=/artifacts
+CMD ["python", "scripts/check_browser.py"]

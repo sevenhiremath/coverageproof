@@ -39,7 +39,7 @@ def render(snapshot):
     p(f'{len(snapshot["findings"])} normalized issue candidates; {len(snapshot["checks"])} declared checks. Candidates are suspected until reviewed. An open TCP service is discovery, not a vulnerability. This report does not establish that any asset is secure.')
     draft = snapshot.get('report_draft')
     if draft and draft['current'] and draft['review']:
-        p('AI-assisted explanation reviewed by the analyst', 'Heading2')
+        p('AI-assisted explanation reviewed by the analyst' if draft['event']['payload']['provider']=='ollama' else 'Synthetic report draft for automated tests (not live AI)', 'Heading2')
         p(f'Reviewed by {draft["review"]["payload"]["actor"]}; {draft["review"]["created"]}. These explanations do not replace the authoritative check states below.')
         p('Review reason: ' + draft['review']['payload']['note'])
         for section in ('executive_summary','limitations'):
