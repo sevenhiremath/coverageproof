@@ -51,6 +51,8 @@ Uses a real self-owned HTTP fixture. Generates evidence and a PDF in `output/`. 
 - [Demo and presentation outline](docs/DEMO.md)
 - [Syncing online and local work](docs/SYNC.md)
 - [Status / handoff](docs/STATUS.md)
+- [Local model failure and fix](docs/MODEL_OUTPUTS.md)
+- [Exact model retry task](docs/MODEL_RETRY.md)
 - [Submission readiness](docs/SUBMISSION.md)
 - [Dependency licenses and references](THIRD_PARTY.md)
 

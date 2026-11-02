@@ -8,6 +8,8 @@ from coverageproof.store import Store
 from coverageproof.runner import execute
 from coverageproof.planner import plan
 from coverageproof.report import generate
+from coverageproof.model_diagnostics import export_calls
+from coverageproof.store import uid
 
 class Fixture(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -22,8 +24,10 @@ Thread(target=server.serve_forever,daemon=True).start()
 port=server.server_address[1]
 store=Store(out/'experiment.sqlite')
 scope=Scope(name='Owned HTTP experiment',networks=('127.0.0.1/32',),ports=(port,),authorization_reference='Self-owned Python HTTP fixture; not organizer authorization')
+ids=[]
+summary={'status':'running','run_id':uid(),'assessment_ids':ids,'planner_mode':None,'source':'genuine self-owned HTTP fixture; no native scanner execution'}
+(out/'experiment-summary.json').write_text(json.dumps(summary,indent=2))
 try:
-    ids=[]
     for label in ['A: both declared checks assessed','B: admin surface unattempted']:
         a=store.create(label,scope); ids.append(a)
         checks=[store.add_check(a,Action(check='header-nosniff',target=f'http://127.0.0.1:{port}{path}',scope_revision=1)) for path in ['/','/admin']]
@@ -44,7 +48,24 @@ try:
             with store.tx() as db: raw=db.execute('SELECT raw FROM artifacts WHERE id=?',(e['id'],)).fetchone()['raw']
             (out/f'{e["id"]}.http').write_bytes(raw)
     (out/'sample-vapt.pdf').write_bytes(generate(store,ids[1]))
-    summary={'sample_size':2,'check':'one response X-Content-Type-Options condition per exact URL','source':'genuine self-owned HTTP fixture, not native scanner execution','baseline_counts':[1,1],'before_states':[[c['state'] for c in s['checks']] for s in before],'after_states':[c['state'] for c in after['checks']],'planner_mode':proposal.mode,'limitations':'Two scripted HTTP assessments only. No general accuracy or time-saving claim. Mandatory three-tool and live AI validation still pending.'}
+    summary.update({'status':'completed','sample_size':2,'check':'one response X-Content-Type-Options condition per exact URL','source':'genuine self-owned HTTP fixture, not native scanner execution','baseline_counts':[1,1],'before_states':[[c['state'] for c in s['checks']] for s in before],'after_states':[c['state'] for c in after['checks']],'planner_mode':proposal.mode,'limitations':'Two scripted HTTP assessments only. No general accuracy or time-saving claim. Mandatory three-tool and live AI validation still pending.'})
     (out/'experiment-summary.json').write_text(json.dumps(summary,indent=2));print(json.dumps(summary,indent=2))
+except Exception as error:
+    summary.update(status='failed',error_type=type(error).__name__,limitations='Model/experiment failed; the declared gap remains unresolved. Inspect private model diagnostics. No fallback or follow-up substituted.')
+    raise
 finally:
     server.shutdown();server.server_close()
+    summary['assessment_ids']=ids
+    summary['report_file']='observed-state-vapt.pdf'
+    summary['diagnostics_dir']=f'model-diagnostics/{summary["run_id"]}'
+    if ids:
+        for a in ids:
+            snapshot=store.snapshot(a)
+            (out/f'{a}.json').write_text(json.dumps(snapshot,indent=2))
+            for artifact in snapshot['artifacts']:
+                with store.tx() as db:raw=db.execute('SELECT raw FROM artifacts WHERE id=?',(artifact['id'],)).fetchone()['raw']
+                (out/f'{artifact["id"]}.http').write_bytes(raw)
+        (out/'observed-state-vapt.pdf').write_bytes(generate(store,ids[-1]))
+        for a in ids:
+            export_calls(store.path,out/'model-diagnostics'/summary['run_id']/a,a)
+    (out/'experiment-summary.json').write_text(json.dumps(summary,indent=2))

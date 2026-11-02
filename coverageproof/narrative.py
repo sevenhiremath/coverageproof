@@ -1,9 +1,10 @@
 """Evidence-linked report prose is a reviewable draft, never authoritative state."""
 import os
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, ValidationError
 from .domain import Strict, digest
 from .planner import OllamaProvider, model_context
+from .model_diagnostics import record_call, public_validation_failure
 
 
 class Statement(Strict):
@@ -52,9 +53,13 @@ def draft_report(store, assessment, provider=None):
     try:
         draft=ReportDraft.model_validate_json(provider.structured(ReportDraft.model_json_schema(),prompt,model_context(snapshot)))
         validate_draft(draft,snapshot)
-    except ValueError:
-        with store.tx() as db:store.event(db,assessment,'report_draft_failed',{'reason':'Model request or grounded draft validation failed. No fallback substituted.'})
+    except ValueError as error:
+        call=record_call(store,assessment,'report_draft',provider,'rejected',error)
+        with store.tx() as db:store.event(db,assessment,'report_draft_failed',{'model_call':call,'reason':'Model request or grounded draft validation failed. No fallback substituted.'})
+        if isinstance(error,ValidationError):
+            raise public_validation_failure(error,call) from None
         raise
+    record_call(store,assessment,'report_draft',provider,'accepted')
     payload={'basis':basis(snapshot),'draft':draft.model_dump(mode='json'),'provider':'ollama' if isinstance(provider,OllamaProvider) else 'test_provider'}
     with store.tx() as db:
         # A changed assessment makes this basis stale; stale drafts cannot be accepted or included.
