@@ -2,7 +2,7 @@
 
 ## What works and was checked
 
-- 82 pytest tests pass online on Python 3.12. One upstream Starlette/httpx deprecation warning remains. Scanner format tests and injected failures are synthetic and labeled; provider tests are mocked.
+- 82 pytest tests pass online on Python 3.12. One upstream Starlette/httpx deprecation warning remains. Handwritten scanner format tests and injected failures are synthetic and labeled; a separate regression uses genuine Nmap output. Provider tests are mocked.
 - Durable request → scope → declared checks → explained proposal → exact-action approval → bounded HTTP execution/import → evidence → findings/review → PDF workflow.
 - Network/port/address/path exclusions, conservative URL validation, one-use approvals, denial audits, output/time/concurrency bounds. Native scanner execution remains disabled.
 - Nmap XML, Nikto multi-host JSON and ZAP traditional JSON parsers implemented. Genuine Nmap 7.93 recording and app import verified in network-none GitHub containers (run 41477132439). Nikto/ZAP genuine output verification is still pending.
@@ -10,11 +10,11 @@
 - Collection-time windows distinguish current, stale, unknown and future evidence. Import time cannot refresh an old negative receipt.
 - Real self-owned HTTP experiment rerun: two assessments have equal issue counts [1,1]; the second has an unattempted admin check. Approved follow-up updates that check to condition_not_observed while issue count stays 1. Development rules were used, not live AI. Sample size two; no accuracy or time-saving claim.
 - Current report generated from that experiment; all four pages rendered and inspected. PDF/state consistency is tested. The final report layout must be checked after genuine evidence is added.
-- GitHub container backend test job passed on commit 3292905. Its first run exposed a PDF-text test that depended on font wrapping; the assertion now normalizes whitespace while still requiring the full sentence. The genuine owned Nmap recording job also passed; native XML, manifest and containment record are in samples/recorded-nmap/. Runtime disables external networking, capabilities and writes outside bounded temporary storage.
+- GitHub container backend test job passed on commit 3292905. Its first run exposed a PDF-text test that depended on font wrapping; the assertion now normalizes whitespace while still requiring the full sentence. The genuine owned Nmap recording job also passed on commit 8d18830; native XML, manifest and containment record are in samples/recorded-nmap/. Runtime disables external networking, capabilities and writes outside bounded temporary storage.
 
 ## External work needed next
 
-1. Local Docker lab: genuine Nmap/Nikto/ZAP outputs with scope, containment, versions, hashes and timestamps. Follow LOCAL_HANDOFF.md; do not resubmit old capability inspection.
+1. Approve the exact owned Nikto/ZAP plan in WEB_CHECK_PLAN.md. Official images, help and versions were inspected online in run 41478631044; no web scan has run. Genuine Nmap is already recorded online, so local scanner setup is unnecessary.
 2. Local Ollama: verify actual structured planning on the existing qwen3.5:9b model. No paid API required. Do not call mocked provider tests live AI evaluation.
 3. Real browser walkthrough and final PDF inspection locally. Online Chromium is absent; attempted download failed. HTTP/TestClient checks passed, but they do not substitute for browser testing.
 4. Organizer evaluation scope is not supplied. Owned development fixtures do not establish organizer authorization.

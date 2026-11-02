@@ -41,6 +41,7 @@ def render(snapshot):
     if draft and draft['current'] and draft['review']:
         p('AI-assisted explanation reviewed by the analyst', 'Heading2')
         p(f'Reviewed by {draft["review"]["payload"]["actor"]}; {draft["review"]["created"]}. These explanations do not replace the authoritative check states below.')
+        p('Review reason: ' + draft['review']['payload']['note'])
         for section in ('executive_summary','limitations'):
             for item in draft['event']['payload']['draft'][section]:
                 p(item['text'])
