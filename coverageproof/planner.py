@@ -110,13 +110,13 @@ def model_context(snapshot):
 
 class OllamaProvider:
     """Uses a locally installed model. No API key or model download is performed."""
-    def propose(self, snapshot):
+    def structured(self, schema, system_prompt, context):
         import json
         model = os.environ.get('OLLAMA_MODEL', 'qwen3.5:9b')
         payload = {
-            'model': model, 'stream': False, 'format': Proposal.model_json_schema(),
-            'messages': [{'role':'system','content':SYSTEM_PROMPT},
-                {'role':'user','content':json.dumps(model_context(snapshot))}],
+            'model': model, 'stream': False, 'format': schema,
+            'messages': [{'role':'system','content':system_prompt},
+                {'role':'user','content':json.dumps(context)}],
             'options': {'temperature':0, 'num_predict':2048, 'num_ctx':8192},
             'keep_alive':0,
         }
@@ -133,14 +133,18 @@ class OllamaProvider:
             result = json.loads(raw)
             if result.get('done') is not True or result.get('done_reason') == 'length':
                 raise ValueError('Local model response was incomplete')
-            proposal = Proposal.model_validate_json(result['message']['content'])
-            if proposal.mode != 'model':
-                raise ValueError('Local model returned invalid reasoning provenance')
-            return proposal
+            return result['message']['content']
         except httpx.HTTPError as e:
             raise ValueError('Local model request failed: ' + type(e).__name__ + '. Run Ollama locally with the configured model; nothing was downloaded.') from e
         except (KeyError, TypeError, json.JSONDecodeError) as e:
             raise ValueError('Local model returned an unsupported response shape') from e
+
+
+    def propose(self, snapshot):
+        proposal = Proposal.model_validate_json(self.structured(Proposal.model_json_schema(), SYSTEM_PROMPT, model_context(snapshot)))
+        if proposal.mode != 'model':
+            raise ValueError('Local model returned invalid reasoning provenance')
+        return proposal
 
 
 class OpenAIProvider:

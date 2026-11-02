@@ -79,3 +79,9 @@ docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -
 ```
 
 Image build downloads dependencies. Test runtime has no external network; owned loopback fixtures still work. This job does not run native scanners or Ollama. See GitHub Actions for the actual container result.
+
+## AI report explanations
+
+With the Ollama provider configured, draft a short executive explanation and limitations from stored checks. Each statement must cite real checks and their observations. The draft needs analyst acceptance before it enters the PDF. Changed assessment state invalidates the draft. Citation checks cannot prove the prose is true: inspect its meaning before accepting it. This feature is mock-tested; actual local model output remains to be validated.
+
+The first genuine native Nmap recording is in [samples/recorded-nmap](samples/recorded-nmap). It was collected in an isolated owned GitHub fixture and imported successfully; one open port produced an inventory observation and zero vulnerability candidates. Nikto/ZAP still need genuine verification.

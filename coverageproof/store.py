@@ -233,7 +233,14 @@ class Store:
                 if latest:
                     f['status'] = latest['disposition'] if latest['evidence_digest'] == f['evidence_digest'] else 'review_outdated'
             ranked = sorted(findings, key=risk_key)
-            return {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
+            snapshot = {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
+
+            from .narrative import basis
+            draft=next((e for e in reversed(snapshot['events']) if e['kind']=='report_drafted'),None)
+            current=basis(snapshot)
+            accepted=next((e for e in reversed(snapshot['events']) if e['kind']=='report_draft_accepted' and draft and e['payload']['draft_id']==draft['id'] and e['payload']['basis']==current),None)
+            snapshot['report_draft']={'event':draft,'current':bool(draft and draft['payload']['basis']==current),'review':accepted} if draft else None
+            return snapshot
 
     def set_applicability(self, check_id, decision, note, actor):
         if decision not in {'applicable', 'not_applicable'}:

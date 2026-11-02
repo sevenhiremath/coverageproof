@@ -37,6 +37,16 @@ def render(snapshot):
     p('Executive summary', 'Heading1')
     p(snapshot['request'])
     p(f'{len(snapshot["findings"])} normalized issue candidates; {len(snapshot["checks"])} declared checks. Candidates are suspected until reviewed. An open TCP service is discovery, not a vulnerability. This report does not establish that any asset is secure.')
+    draft = snapshot.get('report_draft')
+    if draft and draft['current'] and draft['review']:
+        p('AI-assisted explanation reviewed by the analyst', 'Heading2')
+        p(f'Reviewed by {draft["review"]["payload"]["actor"]}; {draft["review"]["created"]}. These explanations do not replace the authoritative check states below.')
+        for section in ('executive_summary','limitations'):
+            for item in draft['event']['payload']['draft'][section]:
+                p(item['text'])
+                p(f'Checks: {item["check_ids"]}; observations: {item["evidence_ids"]}')
+    else:
+        p('AI report explanations: no current analyst-accepted draft. The stored assessment state is reported below.')
     p('Assessment methodology and rules of engagement', 'Heading1')
     p('Coverage is limited to the explicitly declared checks. Literal-IP network boundaries and permitted ports are enforced. All runner actions need one-use approval. Redirects and environment proxies are disabled for the supported HTTP runner. Native findings-only exports cannot establish negative checks.')
     p(json.dumps(snapshot['scope'], indent=2))
