@@ -25,3 +25,19 @@ def test_unanswered_count_keeps_failure_and_applicability_separate(store,scope):
         assert '2 unanswered declared check(s)' in html
         assert 'No matching observation or execution attempt' in html
         assert f'href="#check-{ids[1]}"' in html
+
+
+def test_report_embeds_licensed_fonts_and_document_metadata(store,scope):
+    a=store.create('Portable English report with traceable evidence',scope)
+    pdf=PdfReader(BytesIO(generate(store,a)))
+    embedded=[]
+    for page in pdf.pages:
+        for ref in page['/Resources']['/Font'].values():
+            font=ref.get_object()
+            descriptor=font.get('/FontDescriptor')
+            if descriptor and descriptor.get_object().get('/FontFile2'):
+                embedded.append(descriptor.get_object()['/FontFile2'].get_data())
+    assert embedded
+    assert all(b'Copyright (c) 2003 by Bitstream' in data and b'Permission is hereby granted' in data for data in embedded)
+    assert pdf.metadata.title=='CoverageProof VAPT assessment'
+    assert pdf.metadata.author=='CoverageProof'

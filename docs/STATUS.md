@@ -2,7 +2,7 @@
 
 ## What works and was checked
 
-- 97 pytest tests pass online on Python 3.12. One upstream Starlette/httpx deprecation warning remains. Handwritten scanner format tests and injected failures are synthetic and labeled; a separate regression uses genuine Nmap output. Provider tests are mocked.
+- 98 pytest tests pass online on Python 3.12. One upstream Starlette/httpx deprecation warning remains. Handwritten scanner format tests and injected failures are synthetic and labeled; a separate regression uses genuine Nmap output. Provider tests are mocked.
 - Durable request → scope → declared checks → explained proposal → exact-action approval → bounded HTTP execution/import → evidence → findings/review → PDF workflow.
 - Network/port/address/path exclusions, conservative URL validation, one-use approvals, denial audits, output/time/concurrency bounds. Native scanner execution remains disabled.
 - Nmap XML, Nikto multi-host JSON and ZAP traditional JSON parsers implemented. Genuine Nmap 7.93 recording and app import verified in network-none GitHub containers (run 41477132439). Nikto/ZAP genuine output verification is still pending.

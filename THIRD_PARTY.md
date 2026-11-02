@@ -24,3 +24,6 @@ Relevant references inspected, not executed:
 - PentestGPT (MIT) and Nuclei (MIT): public architecture/result-schema references from prior research; neither is integrated. The product does not claim their functionality as its own.
 
 Other supplied repositories (Arjun, Dalfox, reconFTW, tomnomnom and individual-builder profiles) are optional background, not incorporated dependencies. No licenses are inferred for code that has not been selected for use.
+
+
+Reports embed the unmodified Bitstream Vera font files already distributed with ReportLab, instead of relying on machine-specific font substitutes. Copyright (c) 2003 Bitstream, Inc.; Bitstream Vera is a trademark of Bitstream, Inc. Full notices are preserved in LICENSES/Bitstream-Vera.txt and the embedded font's original naming/license table. No font binary is separately vendored or sold. This does not establish full glyph coverage for every writing system.

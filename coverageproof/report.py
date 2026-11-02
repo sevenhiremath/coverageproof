@@ -1,4 +1,7 @@
 from collections import Counter
+from functools import partial
+from threading import Lock
+import reportlab
 from hashlib import sha256
 from html import escape
 from io import BytesIO
@@ -6,6 +9,7 @@ import json
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen.canvas import Canvas
 from pathlib import Path
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -14,15 +18,20 @@ from .domain import now
 from .store import uid
 
 
+FONT_LOCK=Lock()
+
+
 def render(snapshot):
     stream = BytesIO()
     styles = getSampleStyleSheet()
-    font_root = Path('/usr/share/fonts/truetype/dejavu')
-    if (font_root / 'DejaVuSans.ttf').exists():
-        pdfmetrics.registerFont(TTFont('CoverageSans', str(font_root / 'DejaVuSans.ttf')))
-        pdfmetrics.registerFont(TTFont('CoverageSansBold', str(font_root / 'DejaVuSans-Bold.ttf')))
-        for name in ['BodyText','Normal','Title','Heading1','Heading2']:
-            styles[name].fontName = 'CoverageSansBold' if name in ['Title','Heading1','Heading2'] else 'CoverageSans'
+    # Use the font distributed with ReportLab, not environment-specific substitutes.
+    font_root = Path(reportlab.__file__).parent / 'fonts'
+    with FONT_LOCK:
+        if 'CoverageSans' not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont('CoverageSans', str(font_root / 'Vera.ttf')))
+            pdfmetrics.registerFont(TTFont('CoverageSansBold', str(font_root / 'VeraBd.ttf')))
+    for name in ['BodyText','Normal','Title','Heading1','Heading2']:
+        styles[name].fontName = 'CoverageSansBold' if name in ['Title','Heading1','Heading2'] else 'CoverageSans'
     styles['Heading1'].keepWithNext = True
     styles['Heading2'].keepWithNext = True
     styles['BodyText'].fontSize = 9
@@ -35,7 +44,7 @@ def render(snapshot):
     p('CoverageProof | VAPT assessment', 'Title')
     p(f'Assessment {snapshot["id"]} | Snapshot {snapshot["snapshot_id"]}', 'BodyText')
     p('Executive summary', 'Heading1')
-    p(snapshot['request'])
+    p('Analyst request: ' + snapshot['request'])
     p(f'{len(snapshot["findings"])} normalized issue candidates; {len(snapshot["checks"])} declared checks. Candidates are suspected until reviewed. An open TCP service is discovery, not a vulnerability. This report does not establish that any asset is secure.')
     summary = snapshot.get('coverage_summary')
     if summary:
@@ -56,7 +65,7 @@ def render(snapshot):
     p(json.dumps(snapshot['scope'], indent=2))
     p('Tool execution and assets tested', 'Heading1')
     for c in snapshot['checks']:
-        p(f'{c["id"]} | {c["action"]["target"]} | {c["condition"]} | {c["state"]}')
+        p(f'{c["id"]} | target {c["action"]["target"]} | port {c["action"]["port"] or "in URL"} | {c["condition"]} | {c["state"]}')
         if c.get('applicability'):
             p('Applicability review: ' + json.dumps(c['applicability']))
         for a in c['attempts']:
@@ -111,11 +120,11 @@ def render(snapshot):
         if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted','risk_context_recorded','applicability_reviewed','model_call_recorded'}:
             p(f'{e["created"]} {e["kind"]}: {json.dumps(e["payload"])}')
     def footer(canvas, doc):
-        canvas.setFont('Helvetica',8)
+        canvas.setFont('CoverageSans',8)
         canvas.setFillColor(colors.HexColor('#556171'))
         canvas.drawString(0.65*inch,0.4*inch,'CoverageProof | Bounded assessment | Analyst review required')
         canvas.drawRightString(7.6*inch,0.4*inch,f'Page {doc.page}')
-    SimpleDocTemplate(stream, rightMargin=44,leftMargin=44,topMargin=42,bottomMargin=44).build(story,onFirstPage=footer,onLaterPages=footer)
+    SimpleDocTemplate(stream, title='CoverageProof VAPT assessment', author='CoverageProof', subject='Evidence-backed assessment of declared checks', rightMargin=44,leftMargin=44,topMargin=42,bottomMargin=44).build(story,onFirstPage=footer,onLaterPages=footer,canvasmaker=partial(Canvas,initialFontName='CoverageSans'))
     return stream.getvalue()
 
 

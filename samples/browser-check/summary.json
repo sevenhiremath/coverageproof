@@ -1,0 +1,33 @@
+{
+  "source": "automated owned Chromium integration test",
+  "planning_mode": "development",
+  "report_provider": "synthetic test provider, not live AI",
+  "source_commit": "f2da719bcf9b0a14094e46b1246eb957945159bd",
+  "checks": [
+    "Root execution preserves the unattempted admin gap",
+    "Proposed admin follow-up needs approval and updates only its declared condition",
+    "Browser evidence download matches stored SHA256",
+    "Unaccepted and outdated synthetic report drafts stay out of downloaded PDF",
+    "Out-of-scope action blocked without a target request"
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.4",
+  "before_followup_states": [
+    "finding_supported",
+    "unattempted"
+  ],
+  "after_followup_states": [
+    "finding_supported",
+    "condition_not_observed"
+  ],
+  "issue_counts_before_after": [
+    1,
+    1
+  ],
+  "page_errors": [],
+  "final_states": [
+    "finding_supported",
+    "condition_not_observed",
+    "unattempted"
+  ]
+}

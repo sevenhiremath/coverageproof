@@ -89,3 +89,9 @@ Image build downloads dependencies. Test runtime has no external network; owned 
 With the Ollama provider configured, draft a short executive explanation and limitations from stored checks. Each statement must cite real checks and their observations. The draft needs analyst acceptance before it enters the PDF. Changed assessment state invalidates the draft. Citation checks cannot prove the prose is true: inspect its meaning before accepting it. This feature is mock-tested; actual local model output remains to be validated.
 
 The first genuine native Nmap recording is in [samples/recorded-nmap](samples/recorded-nmap). It was collected in an isolated owned GitHub fixture and imported successfully; one open port produced an inventory observation and zero vulnerability candidates. Nikto/ZAP still need genuine verification.
+
+## Recorded browser workflow
+
+![Owned browser test showing an unanswered declared check](samples/browser-check/before-followup.png)
+
+[Before/after captures and test summary](samples/browser-check/README.md). Real Chromium and owned HTTP receipts; development planning and a synthetic report-review provider are explicitly labeled. This does not replace the pending real-model demonstration.
