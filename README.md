@@ -28,7 +28,7 @@ Open http://127.0.0.1:8000. Windows: activate with `.venv\Scripts\Activate.ps1`.
 
 Working: durable declared-check workflow, exact-action one-use approvals, network/port/exclusion policy, Nmap/Nikto/ZAP native parsers, evidence hashes and pointers, coverage states, bounded HTTP runner, provider contract, development planner, findings candidates, downloadable report snapshots, Jinja interface and automated tests.
 
-Not submission ready: genuine three-scanner lab output verification, organizer lab access, live AI evaluation, cross-tool issue mappings, stronger risk contextualization and native isolated scanner runner. No deterministic response is represented as live AI reasoning. Read [status](docs/STATUS.md) before making capability claims.
+Not submission ready: genuine three-scanner lab output verification, organizer lab access, live AI evaluation, broader cross-tool issue mappings and native isolated scanner runner. No deterministic response is represented as live AI reasoning. Read [status](docs/STATUS.md) before making capability claims.
 
 ## Evidence experiment
 
@@ -44,6 +44,7 @@ Uses a real self-owned HTTP fixture. Generates evidence and a PDF in `output/`. 
 - [All-seven integration matrix](docs/INTEGRATIONS.md)
 - [Architecture and boundaries](docs/ARCHITECTURE.md)
 - [Why we chose these approaches](docs/DECISIONS.md)
+- [How grouping and risk priority work](docs/CORRELATION_AND_RISK.md)
 - [Useful ideas from winning projects](docs/WINNER_REFERENCES.md)
 - [Local scanner handoff](docs/LOCAL_HANDOFF.md)
 - [Syncing online and local work](docs/SYNC.md)
@@ -67,3 +68,5 @@ The provider calls `http://127.0.0.1:11434/api/chat`, requests JSON matching the
 ## Finding review
 
 Inspect a candidate's source evidence, enter a review reason and choose accepted for report, false positive or needs review. New evidence invalidates the earlier review. False positives remain available for traceability. Imported observations without matching declared checks are displayed separately and can be added to the plan after inspection.
+
+The current app also groups the documented ZAP nosniff rule with the corresponding HTTP check at an exact URL, preserves contradictions/source severity differences, and lets analysts record risk context with reasons and evidence references. The rules are intentionally limited; see the grouping and risk document for alternatives and drawbacks.

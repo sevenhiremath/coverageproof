@@ -57,7 +57,7 @@ def render(snapshot):
         p('These observations do not count as completed declared checks until the analyst reviews and adds them to the plan.')
     p('Severity distribution and prioritization', 'Heading1')
     p(json.dumps(dict(Counter(f['severity'] for f in snapshot['findings'] if f['status'] != 'false_positive'))))
-    p('Ranking uses source severity, followed by asset and finding identifier for stable ordering. Exposure, exploitability and asset impact are not yet enriched; unknown inputs remain unknown. CVSS is not invented.')
+    p('Ranking uses the highest supplied source severity, then attributed exposure, asset impact and analyst validation. Asset and finding identifier break ties. Missing inputs stay unknown. No numerical confidence, CVSS or combined risk score is invented. False-positive candidates are excluded from the active severity distribution but retained in the evidence record.')
     p('Detailed vulnerability findings, impact and remediation', 'Heading1')
     if not snapshot['findings']:
         p('No issue candidates recorded. This is not evidence that unattempted or inconclusive checks found no issues.')
@@ -65,6 +65,16 @@ def render(snapshot):
         p(f'{f["id"]} | {f["title"]}', 'Heading2')
         for key in ('asset','issue_class','severity','cvss','confidence','status','impact','remediation'):
             p(f'{key}: {f[key]}')
+        if f.get('validation_status'):
+            p(f'Evidence status: {f["validation_status"]}; source tools: {", ".join(f["source_tools"])}')
+            p(f['correlation_limit'])
+            if f['severity_disagreement']:
+                p(f'Source severity disagreement: {f["source_severities"]}. The highest supplied severity is displayed, not an independently calculated score.')
+            for source in f['source_observations']:
+                p(f'{source["tool"]} | {source["outcome"]} | {source["observed_at"]} | observation {source["id"]}: {source["detail"]}')
+            p(json.dumps(f['risk_explanation']))
+            if f.get('risk_context'):
+                p(f'Risk context by {f["risk_context"]["actor"]} at {f["risk_context"]["created"]}: {f["risk_context"]["note"]}')
         if f.get('review'):
             p(f'Last review by {f["review"]["actor"]} at {f["review"]["created"]}: {f["review"]["note"]}')
         p('CVE/CWE: not independently established. References: native artifact and source pointers below.')
@@ -81,7 +91,7 @@ def render(snapshot):
     for a in snapshot['approvals']:
         p(json.dumps(a))
     for e in snapshot['events']:
-        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted'}:
+        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted','risk_context_recorded'}:
             p(f'{e["created"]} {e["kind"]}: {json.dumps(e["payload"])}')
     def footer(canvas, doc):
         canvas.setFont('Helvetica',8)

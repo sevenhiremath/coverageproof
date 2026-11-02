@@ -97,6 +97,7 @@ def model_context(snapshot):
         'scope': snapshot['scope'],
         'checks': [dict(id=c['id'], action=c['action'], condition=c['condition'], state=c['state'],
             observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
+        'finding_cases': [dict(id=f['id'],asset=f['asset'],issue_class=f['issue_class'],severity=f['severity'],status=f['status'],validation_status=f.get('validation_status','source_reported'),evidence_ids=[e['observation'] for e in f['evidence'][:20]],risk_explanation=f.get('risk_explanation')) for f in snapshot['findings'][:20]],
         'context_limit': 'At most 32 checks, 10 observations each and 1500 characters per observation. Raw artifact bodies are not supplied.'
     }
 
