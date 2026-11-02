@@ -10,4 +10,4 @@ SQLite tables: assessments (versioned scope snapshot), checks, approvals, attemp
 
 The loopback UI is a single analyst tool. Host/Origin checks prevent common cross-site/rebinding mutations; no multi-user authentication or role assignment is claimed. Do not expose directly to the internet. Analyst names are audit labels, not verified identities.
 
-Crash recovery for jobs left running, artifact encryption, per-path scope boundaries, import-age staleness, remain pending. Finding review disposition now records the analyst decision and evidence digest. No automatic final-report approval is claimed.
+Crash recovery for jobs left running and artifact encryption remain pending. Path boundaries and collection-time windows are enforced; unknown timestamps remain uncertain. Applicability reviews are tied to scope/action and invalidated by execution or evidence. Finding review disposition now records the analyst decision and evidence digest. No automatic final-report approval is claimed.

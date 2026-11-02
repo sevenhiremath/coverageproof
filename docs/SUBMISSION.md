@@ -22,4 +22,4 @@ See [orientation instructions](ORIENTATION_2026-11-02.md), recorded from the org
 - Isolated environment required for testing/performance measurements; do not present prior loopback development checks as isolated-lab evaluation proof.
 - Codebase security practices, smooth working execution and clear participant explanations are evaluated. Add security review and reproducible setup checks before recording.
 - Top 10–20 entries may proceed to industry-judge live presentations; prepare for a source walkthrough and live demonstration.
-- Organizer doubts go through support tickets. No messages, tickets, forms, submission or link publication have been sent.
+- Organizer doubts go through support tickets. The user confirms the selection form was submitted. No organizer messages/tickets or final entry have been sent by this app/assistant.

@@ -7,6 +7,7 @@ import sqlite3
 from uuid import uuid4
 from .adapters import parse
 from .correlation import correlate, risk_key, explain_risk
+from .freshness import freshness
 from .domain import Action, Scope, Receipt, State, CHECKS, action_fingerprint, canonical_target, coverage, digest, now, validate_scope
 
 
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,assessment TEXT REFERENCES
 CREATE TABLE IF NOT EXISTS risk_contexts(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),finding TEXT NOT NULL,exposure TEXT NOT NULL,asset_impact TEXT NOT NULL,exploitability TEXT NOT NULL,evidence_ids TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),finding TEXT NOT NULL,disposition TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,evidence_digest TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS unmatched(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),artifact TEXT REFERENCES artifacts(id),receipt TEXT NOT NULL,created TEXT NOT NULL,linked_check TEXT REFERENCES checks(id));
+CREATE TABLE IF NOT EXISTS applicability(id TEXT PRIMARY KEY,check_id TEXT REFERENCES checks(id),decision TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,basis TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),snapshot TEXT NOT NULL,sha256 TEXT NOT NULL,created TEXT NOT NULL);
 '''
 
@@ -111,10 +113,18 @@ class Store:
     def claim(self, check_id, approval):
         with self.tx() as db:
             row, scope, action = self.check_context(db, check_id)
-            fp = action_fingerprint(scope, action)
+            try:
+                fp = action_fingerprint(scope, action)
+            except ValueError as e:
+                fp=None
+                scope_reason=str(e)
             approved = db.execute('SELECT * FROM approvals WHERE id=? AND check_id=? AND fingerprint=? AND consumed IS NULL', (approval, check_id, fp)).fetchone()
             active = db.execute("SELECT 1 FROM attempts WHERE status='running'").fetchone()
-            reason = 'Approval missing, consumed or bound to another action' if approved is None else 'Runner concurrency limit (one job) reached' if active else None
+            reason = scope_reason if fp is None else 'Approval missing, consumed or bound to another action' if approved is None else 'Runner concurrency limit (one job) reached' if active else None
+            applicability = db.execute('SELECT * FROM applicability WHERE check_id=? ORDER BY rowid DESC LIMIT 1', (check_id,)).fetchone()
+            has_results = db.execute('SELECT 1 FROM observations WHERE check_id=?', (check_id,)).fetchone() or db.execute('SELECT 1 FROM attempts WHERE check_id=?', (check_id,)).fetchone()
+            if applicability and not has_results and applicability['decision']=='not_applicable' and applicability['basis']==fp:
+                reason = 'Check is marked not applicable; review applicability before execution'
             if reason:
                 self.event(db, row['assessment'], 'execution_denied', {'check_id': check_id, 'reason': reason})
             else:
@@ -184,14 +194,36 @@ class Store:
                 observations = [dict(x) for x in db.execute('SELECT * FROM observations WHERE check_id=?', (c['id'],))]
                 receipts = [Receipt.model_validate_json(o['receipt']) for o in observations]
                 attempts = [dict(x) for x in db.execute('SELECT * FROM attempts WHERE check_id=?', (c['id'],))]
-                state = coverage(receipts, stale=action.scope_revision != scope.revision)
+                for o,r in zip(observations,receipts):
+                    o['freshness']=freshness(r.observed_at,scope.evidence_max_age_hours)
+                usable=[]
+                for o,r in zip(observations,receipts):
+                    if o['freshness']['state'] in {'stale','future_timestamp'}:
+                        continue
+                    # A timestamp-less negative is not a current, bounded negative receipt.
+                    if o['freshness']['state']=='unknown' and r.outcome==State.NOT_OBSERVED:
+                        usable.append(r.model_copy(update={'outcome':State.INCONCLUSIVE}))
+                    else:
+                        usable.append(r)
+                state = coverage(usable, stale=action.scope_revision != scope.revision)
+                if receipts and not usable:state=State.STALE
                 if attempts and state == State.UNATTEMPTED:
                     state = State.FAILED if attempts[-1]['status'] in {'failed','timeout','unsupported'} else State.INCONCLUSIVE
+                review = db.execute('SELECT * FROM applicability WHERE check_id=? ORDER BY rowid DESC LIMIT 1', (c['id'],)).fetchone()
+                applicability = dict(review) if review else None
+                if review:
+                    applicability['current'] = not receipts and not attempts and review['basis'] == digest({'scope':scope.model_dump(mode='json'),'action':action.model_dump(mode='json')})
+                    if applicability['current'] and review['decision'] == 'not_applicable':
+                        state = State.NOT_APPLICABLE
                 for o, r in zip(observations, receipts):
                     observation_rows.append({'id':o['id'],'artifact':o['artifact'],'tool':tools[o['artifact']],'receipt':r})
-                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
+                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'applicability':applicability, 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
             findings=correlate(observation_rows)
+            by_id={o['id']:o for c in checks for o in c['observations']}
             for f in findings:
+                for source in f['source_observations']:
+                    source['freshness']=by_id[source['id']]['freshness']
+                f['freshness_status']='all_evidence_stale' if all(s['freshness']['state'] in {'stale','future_timestamp'} for s in f['source_observations']) else 'inspect_source_times'
                 f['evidence_digest'] = digest(sorted(f['evidence'], key=lambda e:e['observation']))
                 risk=db.execute('SELECT * FROM risk_contexts WHERE assessment=? AND finding=? ORDER BY rowid DESC LIMIT 1',(assessment,f['id'])).fetchone()
                 f['risk_context']=dict(risk,evidence_ids=json.loads(risk['evidence_ids'])) if risk else None
@@ -201,7 +233,32 @@ class Store:
                 if latest:
                     f['status'] = latest['disposition'] if latest['evidence_digest'] == f['evidence_digest'] else 'review_outdated'
             ranked = sorted(findings, key=risk_key)
-            return {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
+            snapshot = {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
+
+            from .narrative import basis
+            draft=next((e for e in reversed(snapshot['events']) if e['kind']=='report_drafted'),None)
+            current=basis(snapshot)
+            accepted=next((e for e in reversed(snapshot['events']) if e['kind']=='report_draft_accepted' and draft and e['payload']['draft_id']==draft['id'] and e['payload']['basis']==current),None)
+            snapshot['report_draft']={'event':draft,'current':bool(draft and draft['payload']['basis']==current),'review':accepted} if draft else None
+            return snapshot
+
+    def set_applicability(self, check_id, decision, note, actor):
+        if decision not in {'applicable', 'not_applicable'}:
+            raise ValueError('Unknown applicability decision')
+        if not 12 <= len(note.strip()) <= 2000 or not 1 <= len(actor.strip()) <= 200:
+            raise ValueError('Analyst identity and a specific applicability reason are required')
+        with self.tx() as db:
+            c, scope, action = self.check_context(db, check_id)
+            validate_scope(scope, action)
+            evidence = db.execute('SELECT 1 FROM observations WHERE check_id=?', (check_id,)).fetchone()
+            attempt = db.execute('SELECT 1 FROM attempts WHERE check_id=?', (check_id,)).fetchone()
+            if evidence or attempt:
+                raise ValueError('An applicability decision cannot replace observations or attempted-check outcomes')
+            basis = action_fingerprint(scope, action)
+            record = uid()
+            db.execute('INSERT INTO applicability VALUES(?,?,?,?,?,?,?)', (record,check_id,decision,note.strip(),actor.strip(),basis,now()))
+            self.event(db,c['assessment'],'applicability_reviewed',{'check':check_id,'decision':decision,'reason':note.strip(),'actor':actor.strip(),'basis':basis})
+            return record
 
     def set_risk_context(self, assessment, finding, exposure, asset_impact, exploitability, evidence_ids, note, actor):
         if exposure not in {'unknown','lab_only','internal_per_owner','external_per_owner'} or asset_impact not in {'unknown','low','medium','high'} or exploitability not in {'not_assessed','analyst_validated'}:

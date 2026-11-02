@@ -18,7 +18,7 @@ No PentestGPT, DefectDojo, Nuclei, Nikto or other reference-project implementati
 Installed distribution license metadata is captured in `docs/dependency-licenses.json`. Preserve dependency copyright/license notices in redistributed environments. Scanner tools are not bundled. Nmap uses its own NPSL, Nikto scanner code is GPL-3.0 and its databases have separate terms, ZAP is Apache-2.0: review distribution/data restrictions before bundling or publishing tool images.
 
 Relevant references inspected, not executed:
-- DefectDojo `dojo/tools/nikto/parser.py`: parser dispatch by format and explicit output-version handling; BSD-3-Clause project.
+- DefectDojo `dojo/tools/nikto/parser.py` and `dojo/tools/zap/parser.py`: parser dispatch by format and explicit output-version handling; BSD-3-Clause project.
 - Nikto `program/plugins/nikto_report_json.plugin`: format producer fields and multi-host array; GPL-3.0-only file. Parser is independently written against the data format.
 - Nmap XML documentation; OWASP ZAP traditional JSON documentation.
 - PentestGPT (MIT) and Nuclei (MIT): public architecture/result-schema references from prior research; neither is integrated. The product does not claim their functionality as its own.

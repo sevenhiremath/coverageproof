@@ -1,0 +1,365 @@
+{
+  "id": "c9fd9c4c1044489890082ed42af894c0",
+  "request": "B: admin surface unattempted",
+  "created": "2026-11-02T15:48:55.924614+00:00",
+  "scope": {
+    "name": "Owned HTTP experiment",
+    "revision": 1,
+    "networks": [
+      "127.0.0.1/32"
+    ],
+    "ports": [
+      41553
+    ],
+    "exclusions": [],
+    "authorization_reference": "Self-owned Python HTTP fixture; not organizer authorization",
+    "environment": "self-owned-development",
+    "allowed_paths": [
+      "/"
+    ],
+    "excluded_paths": [],
+    "evidence_max_age_hours": 24
+  },
+  "checks": [
+    {
+      "id": "6142d17b5b3d4123b14097669199b87a",
+      "action": {
+        "check": "header-nosniff",
+        "target": "http://127.0.0.1:41553/",
+        "port": null,
+        "scope_revision": 1
+      },
+      "condition": "X-Content-Type-Options is absent or differs from nosniff",
+      "state": "finding_supported",
+      "applicability": null,
+      "observations": [
+        {
+          "id": "0c8019ce5aad44519a4840b104e7b04e",
+          "check_id": "6142d17b5b3d4123b14097669199b87a",
+          "artifact": "298b2f4339b04a6f953a9eac5889078c",
+          "receipt": {
+            "target": "http://127.0.0.1:41553/",
+            "check": "header-nosniff",
+            "outcome": "finding_supported",
+            "detail": "GET http://127.0.0.1:41553/; HTTP 200; nosniff=False. Only this response and condition assessed; redirects not followed.",
+            "source_ref": "HTTP response headers",
+            "issue_class": "header:x-content-type-options",
+            "title": "Missing or unexpected X-Content-Type-Options",
+            "severity": "low",
+            "confidence": "direct response observation",
+            "observed_at": "2026-11-02T15:48:55.952502+00:00",
+            "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types."
+          },
+          "freshness": {
+            "state": "current_window",
+            "collected_at": "2026-11-02T15:48:55.952502+00:00",
+            "reason": "Within the declared 24-hour evidence window; this does not authenticate the import."
+          }
+        }
+      ],
+      "attempts": [
+        {
+          "id": "41eef1023be9475b8fcfdde24fe1ae04",
+          "check_id": "6142d17b5b3d4123b14097669199b87a",
+          "status": "completed",
+          "detail": "One response recorded; no broader security conclusion.",
+          "created": "2026-11-02T15:48:55.933818+00:00"
+        }
+      ]
+    },
+    {
+      "id": "d24fafda2f644854b9c33c9712dfa7b8",
+      "action": {
+        "check": "header-nosniff",
+        "target": "http://127.0.0.1:41553/admin",
+        "port": null,
+        "scope_revision": 1
+      },
+      "condition": "X-Content-Type-Options is absent or differs from nosniff",
+      "state": "condition_not_observed",
+      "applicability": null,
+      "observations": [
+        {
+          "id": "c6758f42c47a498d8be16b3c45296fe7",
+          "check_id": "d24fafda2f644854b9c33c9712dfa7b8",
+          "artifact": "4791b31eac8d41758267f1c2186f9a34",
+          "receipt": {
+            "target": "http://127.0.0.1:41553/admin",
+            "check": "header-nosniff",
+            "outcome": "condition_not_observed",
+            "detail": "GET http://127.0.0.1:41553/admin; HTTP 200; nosniff=True. Only this response and condition assessed; redirects not followed.",
+            "source_ref": "HTTP response headers",
+            "issue_class": null,
+            "title": null,
+            "severity": "unknown",
+            "confidence": "direct response observation",
+            "observed_at": "2026-11-02T15:48:55.975253+00:00",
+            "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types."
+          },
+          "freshness": {
+            "state": "current_window",
+            "collected_at": "2026-11-02T15:48:55.975253+00:00",
+            "reason": "Within the declared 24-hour evidence window; this does not authenticate the import."
+          }
+        }
+      ],
+      "attempts": [
+        {
+          "id": "25a49e169da24a5cad3021b44047cb53",
+          "check_id": "d24fafda2f644854b9c33c9712dfa7b8",
+          "status": "completed",
+          "detail": "One response recorded; no broader security conclusion.",
+          "created": "2026-11-02T15:48:55.965002+00:00"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "1e7c23c85242",
+      "asset": "http://127.0.0.1:41553/",
+      "issue_class": "header:x-content-type-options",
+      "title": "Missing or unexpected X-Content-Type-Options",
+      "severity": "low",
+      "confidence": "direct response observation",
+      "status": "suspected; analyst review required",
+      "evidence": [
+        {
+          "observation": "0c8019ce5aad44519a4840b104e7b04e",
+          "artifact": "298b2f4339b04a6f953a9eac5889078c",
+          "source_ref": "HTTP response headers"
+        }
+      ],
+      "source_observations": [
+        {
+          "id": "0c8019ce5aad44519a4840b104e7b04e",
+          "tool": "http",
+          "source_issue_class": "header:x-content-type-options",
+          "outcome": "finding_supported",
+          "severity": "low",
+          "confidence": "direct response observation",
+          "observed_at": "2026-11-02T15:48:55.952502+00:00",
+          "detail": "GET http://127.0.0.1:41553/; HTTP 200; nosniff=False. Only this response and condition assessed; redirects not followed.",
+          "source_ref": "HTTP response headers",
+          "freshness": {
+            "state": "current_window",
+            "collected_at": "2026-11-02T15:48:55.952502+00:00",
+            "reason": "Within the declared 24-hour evidence window; this does not authenticate the import."
+          }
+        }
+      ],
+      "source_tools": [
+        "http"
+      ],
+      "source_issue_classes": [
+        "header:x-content-type-options"
+      ],
+      "source_severities": [
+        "low"
+      ],
+      "source_confidences": [
+        "direct response observation"
+      ],
+      "correlation_reasons": [
+        "Registered check for X-Content-Type-Options on one HTTP GET response."
+      ],
+      "validation_status": "source_reported",
+      "severity_disagreement": false,
+      "cvss": null,
+      "remediation": "Set X-Content-Type-Options: nosniff on the affected response and verify content types.",
+      "impact": "Not independently established; depends on affected asset and validation.",
+      "correlation_limit": "Same endpoint and issue condition; timing, response variants and scanner configuration can still explain differing observations. No majority vote or exploitability inference.",
+      "freshness_status": "inspect_source_times",
+      "evidence_digest": "58273e60d1883e16bde7213b318cb29c55c375d05d59c6307e55487b633c4ca7",
+      "risk_context": null,
+      "risk_explanation": {
+        "method": "Source severity first, then analyst-declared exposure, asset impact and validation. Asset/id break remaining ties. No numeric risk score.",
+        "severity_reason": "Highest supplied finding severity is low; supplied values: ['low']. Source differences remain visible.",
+        "exposure": "unknown",
+        "asset_impact": "unknown",
+        "exploitability": "not_assessed",
+        "confidence": "Source confidence labels are retained without numerical conversion or cross-tool averaging.",
+        "limitations": "Analyst context is an attributed assessment, not independent verification. A high source severity can still be a false positive."
+      },
+      "review": null
+    }
+  ],
+  "unmatched": [],
+  "artifacts": [
+    {
+      "id": "298b2f4339b04a6f953a9eac5889078c",
+      "tool": "http",
+      "mode": "live",
+      "sha256": "b557bdd3dabb867133092c1c733746fce2de62e52468e7b809534a87dcd53eeb",
+      "created": "2026-11-02T15:48:55.953162+00:00"
+    },
+    {
+      "id": "4791b31eac8d41758267f1c2186f9a34",
+      "tool": "http",
+      "mode": "live",
+      "sha256": "3e862d940544de5d9cdc0ba11afe71b22587bdd042ddc253c3c6e14a58032c2c",
+      "created": "2026-11-02T15:48:55.975906+00:00"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "d548e6cb80b9438cad61797161c199e1",
+      "check_id": "6142d17b5b3d4123b14097669199b87a",
+      "fingerprint": "cea24ce5692371766886b52cc6ac52a90b1ebc7937e11ab1c46b894de62ccc48",
+      "actor": "Owned fixture experiment",
+      "created": "2026-11-02T15:48:55.931485+00:00",
+      "consumed": "2026-11-02T15:48:55.933798+00:00"
+    },
+    {
+      "id": "8961a966849d45d39ee3a07a4a37cdac",
+      "check_id": "d24fafda2f644854b9c33c9712dfa7b8",
+      "fingerprint": "5e9b706186777a56066e300e7594de296f48e6a5d62cea39f0a61ddcbfd01d90",
+      "actor": "Owned fixture follow-up",
+      "created": "2026-11-02T15:48:55.962192+00:00",
+      "consumed": "2026-11-02T15:48:55.964975+00:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "f0242d6416984a83ac8ec5fa94b1cf3e",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "assessment_created",
+      "payload": {
+        "environment": "self-owned-development"
+      },
+      "created": "2026-11-02T15:48:55.924713+00:00"
+    },
+    {
+      "id": "05a021d40fda47e6ba4dbc8032b27aca",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "check_planned",
+      "payload": {
+        "check_id": "6142d17b5b3d4123b14097669199b87a",
+        "action": {
+          "check": "header-nosniff",
+          "target": "http://127.0.0.1:41553/",
+          "port": null,
+          "scope_revision": 1
+        }
+      },
+      "created": "2026-11-02T15:48:55.926805+00:00"
+    },
+    {
+      "id": "1c61ffd2343d455c9dabf7d3f8896f8a",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "check_planned",
+      "payload": {
+        "check_id": "d24fafda2f644854b9c33c9712dfa7b8",
+        "action": {
+          "check": "header-nosniff",
+          "target": "http://127.0.0.1:41553/admin",
+          "port": null,
+          "scope_revision": 1
+        }
+      },
+      "created": "2026-11-02T15:48:55.929034+00:00"
+    },
+    {
+      "id": "d1fa08e5d12244ff977ba79ed87772b1",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "action_approved",
+      "payload": {
+        "approval": "d548e6cb80b9438cad61797161c199e1",
+        "fingerprint": "cea24ce5692371766886b52cc6ac52a90b1ebc7937e11ab1c46b894de62ccc48",
+        "actor": "Owned fixture experiment"
+      },
+      "created": "2026-11-02T15:48:55.931515+00:00"
+    },
+    {
+      "id": "65282ca64f254239a1ec6459972cc9e3",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "execution_started",
+      "payload": {
+        "attempt": "41eef1023be9475b8fcfdde24fe1ae04",
+        "check_id": "6142d17b5b3d4123b14097669199b87a"
+      },
+      "created": "2026-11-02T15:48:55.933836+00:00"
+    },
+    {
+      "id": "30874df2e40549ab9a2ad6ac4871344e",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "execution_finished",
+      "payload": {
+        "attempt": "41eef1023be9475b8fcfdde24fe1ae04",
+        "status": "completed",
+        "detail": "One response recorded; no broader security conclusion."
+      },
+      "created": "2026-11-02T15:48:55.953243+00:00"
+    },
+    {
+      "id": "06f7a68c4ede4133ae79e4ee6156a236",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "planning_decision",
+      "payload": {
+        "mode": "development",
+        "explanation": "DETERMINISTIC DEVELOPMENT MODE. Rule-based planning only; no language model has interpreted the request. Live AI reasoning remains a submission blocker.",
+        "checks": [
+          {
+            "action": {
+              "check": "header-nosniff",
+              "target": "http://127.0.0.1:41553/admin",
+              "port": null,
+              "scope_revision": 1
+            },
+            "rationale": "Development rule: declared condition remains unattempted. This is an assessment gap, not evidence of a vulnerability. Collect a bounded receipt for this exact target.",
+            "evidence_ids": [
+              "0c8019ce5aad44519a4840b104e7b04e"
+            ],
+            "alternatives": [
+              {
+                "tool": "nikto",
+                "reason_not_chosen": "A server scan is broader than this one response-header question and its export does not prove a negative for this exact check."
+              },
+              {
+                "tool": "no_action",
+                "reason_not_chosen": "Skipping the check would leave this declared assessment question unanswered."
+              }
+            ],
+            "drawback": "Only one HTTP response is examined. This does not establish behavior across other routes, users or times."
+          }
+        ],
+        "provider": "development"
+      },
+      "created": "2026-11-02T15:48:55.958599+00:00"
+    },
+    {
+      "id": "f0772c42206345f3a9a2c464ea588269",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "action_approved",
+      "payload": {
+        "approval": "8961a966849d45d39ee3a07a4a37cdac",
+        "fingerprint": "5e9b706186777a56066e300e7594de296f48e6a5d62cea39f0a61ddcbfd01d90",
+        "actor": "Owned fixture follow-up"
+      },
+      "created": "2026-11-02T15:48:55.962226+00:00"
+    },
+    {
+      "id": "4479f31d12cb4357abb8aa76bcf19893",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "execution_started",
+      "payload": {
+        "attempt": "25a49e169da24a5cad3021b44047cb53",
+        "check_id": "d24fafda2f644854b9c33c9712dfa7b8"
+      },
+      "created": "2026-11-02T15:48:55.965022+00:00"
+    },
+    {
+      "id": "1d1aec13b21a491190b0adb7a9977454",
+      "assessment": "c9fd9c4c1044489890082ed42af894c0",
+      "kind": "execution_finished",
+      "payload": {
+        "attempt": "25a49e169da24a5cad3021b44047cb53",
+        "status": "completed",
+        "detail": "One response recorded; no broader security conclusion."
+      },
+      "created": "2026-11-02T15:48:55.975984+00:00"
+    }
+  ],
+  "snapshot_id": "3d34dfd64bdc45ba9b2d30de72efb96f",
+  "generated": "2026-11-02T15:48:55.986740+00:00"
+}

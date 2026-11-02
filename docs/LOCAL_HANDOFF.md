@@ -1,23 +1,49 @@
-# Local ChatGPT handoff: scanner environment and real evidence only
+# Paste this task into the local ChatGPT app
 
-Give the local coding assistant this file and the latest CoverageProof_Checkpoint_1.zip (which includes source, git history and docs). Also attach PS-1 and the written rules if that assistant cannot read them from this conversation. This is the same GitHub account, but a separate working directory.
+Continue CoverageProof from https://github.com/sevenhiremath/coverageproof . Online Work owns the app and is using GitHub Actions for Docker validation. Backend tests and a genuine isolated Nmap recording/import have passed online. Official Nikto/ZAP images, versions and help were inspected online; web target execution awaits exact approval in docs/WEB_CHECK_PLAN.md. Do not repeat capability inspection, build another scanner lab, change Docker networks, tune hardware or download another AI model.
 
-## Paste this task
+Your local task is only actual Ollama reasoning and browser/PDF verification, which require the model and desktop already installed on this machine. Read README.md, docs/STATUS.md and docs/DECISIONS.md. Preserve the old extraction. Use the current main commit after PR #2 is merged, or the exact tested feature commit supplied by online Work.
 
-You are helping with the LOCAL part of CoverageProof, our PS-1 DataOps Innovation Hackathon project. Online ChatGPT Work owns the app, scope policy, parsers, AI planning, interface and reporting. Your task is only to inspect local capabilities and prepare the smallest isolated, self-owned lab that can produce genuine Nmap, Nikto and OWASP ZAP artifacts. Do not redesign or rebuild the product.
+## Get the source in a fresh folder
 
-First read README.md, docs/STATUS.md, docs/INTEGRATIONS.md, docs/ORIENTATION_2026-11-02.md and docs/LOCAL_SCANNER_TASK.md. The orientation requires isolated tests and no effect on unrelated applications. The older bare-host scanner commands in LOCAL_SCANNER_TASK.md must not be used as evaluation instructions without this isolation requirement. Do not run scanners on the normal host just because the old example uses loopback.
+```powershell
+git clone https://github.com/sevenhiremath/coverageproof.git coverageproof-current
+cd coverageproof-current
+git switch -c local/model-browser-checks
+git status --short
+git rev-parse HEAD
+py -3.14 -m venv .venv
+.\.venv\Scripts\python -m pip install -e '.[test]'
+$env:COVERAGEPROOF_PROVIDER='ollama'
+$env:OLLAMA_MODEL='qwen3.5:9b'
+$env:PYTHONPATH='.'
+.\.venv\Scripts\python scripts/experiment.py
+```
 
-1. Restore the source into a separate folder. If using the zip, preserve history with `git clone coverageproof-history.bundle coverageproof-local`. Inspect `git status` and existing branches. If the shared GitHub repository exists, fetch it and create `local/scanner-fixtures` from the agreed branch. Do not force-push or overwrite another contributor's changes.
-2. Run `python scripts/inspect_local.py` from the restored repository. This only checks available tools and versions, not target services. Return the JSON before choosing OS-specific scanner setup commands. Do not dump environment variables, credentials or personal directory listings. Do not install software or change host/firewall settings without a concrete need and appropriate authorization.
-3. If Docker or a disposable VM is available, prepare a self-owned isolated lab. Keep scanner-to-target traffic within the lab; do not use host networking, privileged containers or published vulnerable-service ports. Container images and dependencies may be obtained during setup, but scanner runtime should have no external egress. Use network rules/topology suitable for the observed platform; document and verify actual containment. If no isolated runtime is available, stop scanner execution and return that limitation plus minimal setup instructions.
-4. Record the allowed network, exact target address/ports, exclusions, tool configuration and self-owned authorization reference. This does NOT establish organizer evaluation authorization. Use only bounded scanner templates; no credential attacks, exploit modules or broad/public scans.
-5. Produce a small script or commands for genuine Nmap XML, Nikto multi-host JSON and ZAP traditional JSON from the authorized fixture. Inspect installed versions first; record actual versions, commands, timestamps, exit status and artifact hashes. Preserve scanner errors and output as generated. Never edit a result to make a parser test pass. Do not execute unfamiliar GitHub projects to investigate them.
-6. Before running active web checks, present the exact lab-bound commands and collect the required approval. The user's authorization for building a lab is not approval for arbitrary later offensive validation. The isolated fixture can be benign; do not invent vulnerabilities for a better demo.
-7. Return a `scanner-artifacts.zip` containing genuine raw outputs, `manifest.json`, `lab-scope.json`, containment/setup notes and any precise parser mismatch. Manifest entries should include source=recorded_genuine, tool/version, exact target/configuration, command, start/end times, exit status, SHA256 and known limitations. Do not include API keys, tokens or unrelated host data.
-8. Keep source changes under `local-lab/` and your branch; do not change coverageproof/ or parser contracts. Use plain commits such as 'Add a small lab for scanner checks'. Send the branch/commit and artifact bundle back to online Work. If GitHub is not ready, return a patch plus artifacts; do not claim a push succeeded.
+Use the already-installed qwen3.5:9b model, no paid API key or subscription automation. Python 3.14 was reported installed; if dependency setup fails, return the exact error rather than replacing system Python. Start the existing Ollama service normally if needed; do not download models or change hardware settings. Never dump environment variables or credentials.
 
-Expected first reply: OS/runtime/tool availability JSON and the next smallest setup step. Expected eventual delivery: genuine scanner evidence plus a reproducible, verified isolated-lab setup. A screenshot alone is not enough.
+The experiment creates its own benign loopback HTTP fixture and two assessments with equal initial issue counts. With the environment above, planning must be actual model mode. It now asserts that the model selected the declared admin gap before running the approved follow-up. If the model returns the wrong check, invalid citations, a timeout or malformed JSON, preserve that real failure and the database; do not weaken the check or substitute development mode. Return actual wall-clock duration, model/runtime versions and the saved proposal/error. These host-loopback results are owned development evidence, not isolated scanner evaluation or organizer authorization.
 
-## What stays online
-Backend and approval logic, format fixes/tests after receiving outputs, AI planning and evidence checks, report and interface work, and submission preparation. API secrets should be configured through supported secret handling only; never pasted into chat or committed.
+## Browser and report walkthrough
+
+Start the same durable experiment database:
+
+```powershell
+$env:COVERAGEPROOF_DB='output/experiment.sqlite'
+.\.venv\Scripts\python -m uvicorn coverageproof.app:app --host 127.0.0.1 --port 8000
+```
+
+Open http://127.0.0.1:8000 in a real browser. Inspect the newly created assessments, model decision, alternative, drawback, real observation IDs, approval audit and bounded negative wording. The experiment's ephemeral fixture has stopped, so do not reexecute its old target or assume it is reachable. Do not import GitHub loopback scanner evidence into a host-loopback scope: these are different fixture environments despite the same address.
+
+For report drafting, use the saved experiment evidence: click the report-draft button, record the actual Ollama result, inspect each check/evidence citation, accept only accurate statements with a reason and download the PDF. Verify no unreviewed or stale prose appears. Add a new explicit declared check to invalidate the accepted draft, then confirm the PDF excludes it. Record real browser/version, elapsed model-call times and PDF page/layout issues.
+
+For a separate live browser follow-up, start `local-lab/fixture.py` in another terminal with the venv Python. Create a NEW self-owned development assessment for literal 127.0.0.1/32, port 8765, allowed paths / and /admin, exclusions empty and an explicit owned-fixture authorization reference. Approve exact header-nosniff actions in the app before executing. No unrelated host services or native scanner commands. Preserve evidence and errors; do not invent results. A fixture missing nosniff is one response-header condition, not a general app vulnerability conclusion.
+
+## Return precisely this
+
+1. Current source commit, actual model/runtime/browser versions and the genuine model proposals/errors with elapsed times.
+2. Browser/PDF checks performed, failures and non-sensitive screenshots.
+3. Privately return output/experiment.sqlite, experiment-summary.json, the generated PDF and raw .http evidence. Do not publicly commit the whole database or private user data. Public sample selection happens after inspection.
+4. Commit only concise reproducible validation notes under docs/ on local/model-browser-checks, using a plain message such as 'Record the local model and browser check'. Push normally, no force push or source redesign. Return the branch/commit and evidence bundle.
+
+Stop only on a concrete runtime/access blocker and report the exact command/error. Do not return another machine capability report. No organizer messages, invitations, final submission or public Drive links.

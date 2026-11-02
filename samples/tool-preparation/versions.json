@@ -1,0 +1,16 @@
+{
+  "source": "tool_preparation_only",
+  "workflow": "https://github.com/sevenhiremath/coverageproof/actions/runs/41478631044",
+  "nikto": {
+    "version": "2.6.1",
+    "image": "ghcr.io/sullo/nikto@sha256:f65dd97be358e8260d97a00e784c05c5f37d2ed69b9a9611b14d3889c2b54efa",
+    "version_check": "succeeded with network none"
+  },
+  "zap": {
+    "version": "2.17.0",
+    "image": "ghcr.io/zaproxy/zaproxy@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238",
+    "version_check": "succeeded with network none; unresolved container-hostname warnings preserved in workflow artifact"
+  },
+  "target_traffic": false,
+  "limitations": "Version/help and image preparation are not genuine web assessment outputs. See docs/WEB_CHECK_PLAN.md for exact actions still awaiting approval."
+}

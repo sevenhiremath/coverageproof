@@ -4,7 +4,7 @@ Native imports are permitted by PS-1 p3 §4 and p5 §6. This is an engineering c
 
 | Tool | Status | Supported format/version | Verification | Limitations |
 |---|---|---|---|---|
-| Nmap | Import-only (parser implemented) | XML xmloutputversion 1.04 / 1.05, scanner=nmap | Handwritten schema fixtures | Explicit TCP port records only; no extraports inference, NSE or vulnerability inference; genuine output pending |
+| Nmap | Import-only (parser implemented) | XML xmloutputversion 1.04 / 1.05, scanner=nmap | Genuine Nmap 7.93 XML 1.05 from owned isolated GitHub fixture, plus schema fixtures | One genuine single-port sample only; no extraports inference, NSE or vulnerability inference; XML 1.04 is schema-tested only |
 | Nikto | Import-only (parser implemented) | Current multi-host JSON array: host/ip/port/start_time/end_time/vulnerabilities | Current upstream exporter inspected; schema fixtures | Legacy objects rejected; exporter lacks version field, cannot attest tool version; genuine output pending; no negative coverage inferred |
 | OWASP ZAP | Import-only (parser implemented) | ZAP 2.x traditional JSON, site[]/alerts[]/instances[] | Official sample schema inspected; schema fixtures | Dev/unknown versions rejected; alert exports do not prove traversal/rule completion; genuine output pending |
 | Nessus | Unsupported | None | No adapter | No commercial availability claimed |

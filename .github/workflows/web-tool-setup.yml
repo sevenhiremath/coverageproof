@@ -1,0 +1,33 @@
+name: Inspect the web tool images
+on:
+  push:
+    paths: ['.github/workflows/web-tool-setup.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get official tool images for preparation only
+        run: |
+          mkdir -p tool-setup
+          docker pull ghcr.io/sullo/nikto:2.6.1
+          docker pull ghcr.io/zaproxy/zaproxy:stable
+      - name: Inspect versions and help without target traffic
+        timeout-minutes: 5
+        run: |
+          docker image inspect ghcr.io/sullo/nikto:2.6.1 --format '{{.Id}} {{json .RepoDigests}} {{json .Config}}' > tool-setup/nikto-image.txt
+          docker image inspect ghcr.io/zaproxy/zaproxy:stable --format '{{.Id}} {{json .RepoDigests}} {{json .Config}}' > tool-setup/zap-image.txt
+          timeout 60 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 1 --pids-limit 64 ghcr.io/sullo/nikto:2.6.1 -Version > tool-setup/nikto-version.txt 2>&1
+          timeout 60 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 1 --pids-limit 64 ghcr.io/sullo/nikto:2.6.1 -Help > tool-setup/nikto-help.txt 2>&1
+          timeout 90 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 1g --cpus 2 --pids-limit 256 ghcr.io/zaproxy/zaproxy:stable zap.sh -version > tool-setup/zap-version.txt 2>&1
+          timeout 30 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 1 --pids-limit 64 ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -h > tool-setup/zap-baseline-help.txt 2>&1
+      - name: Keep preparation output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-tool-setup
+          path: tool-setup/
+          retention-days: 7

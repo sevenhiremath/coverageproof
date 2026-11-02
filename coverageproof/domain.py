@@ -40,6 +40,9 @@ class Scope(Strict):
     exclusions: tuple[str, ...] = ()
     authorization_reference: str = Field(min_length=8, max_length=1000)
     environment: str = 'self-owned-development'
+    allowed_paths: tuple[str, ...] = ('/',)
+    excluded_paths: tuple[str, ...] = ()
+    evidence_max_age_hours: int = Field(default=24, ge=1, le=8760)
 
     @model_validator(mode='after')
     def validate_boundaries(self):
@@ -47,6 +50,11 @@ class Scope(Strict):
             raise ValueError('Explicit networks and valid ports required')
         for n in self.networks + self.exclusions:
             ipaddress.ip_network(n)
+        if not self.allowed_paths:
+            raise ValueError('Declare at least one allowed web path')
+        for path in self.allowed_paths + self.excluded_paths:
+            if not path.startswith('/') or any(x in path for x in ('%', '?', '#', '\\', '..')) or '//' in path or ';' in path or '.' in path.split('/') or any(c.isspace() for c in path):
+                raise ValueError('Path boundaries must be unambiguous absolute paths')
         if self.environment not in {'self-owned-development', 'organizer-authorized'}:
             raise ValueError('Unknown authorization environment')
         return self
@@ -63,7 +71,7 @@ def canonical_target(target: str) -> tuple[str, str, int | None]:
         raise ValueError('Only HTTP(S), no credentials or fragments')
     addr = ipaddress.ip_address(u.hostname or '')  # literal IPs only: no DNS rebinding
     port = u.port or (443 if u.scheme == 'https' else 80)
-    if not 1 <= port <= 65535 or '%' in u.path or '..' in u.path or '\\' in target:
+    if not 1 <= port <= 65535 or '%' in u.path or '..' in u.path or '\\' in target or '//' in u.path or ';' in u.path or '.' in u.path.split('/'):
         raise ValueError('Ambiguous path/port unsupported')
     host = f'[{addr}]' if addr.version == 6 else str(addr)
     return urlunsplit((u.scheme, f'{host}:{port}', u.path or '/', u.query, '')), str(addr), port
@@ -108,6 +116,14 @@ def validate_scope(scope: Scope, action: Action):
         raise ValueError('Target explicitly excluded')
     if (action.port or urlport) not in scope.ports:
         raise ValueError('Port outside approved scope')
+    if urlport is not None:
+        path = urlsplit(canonical_target(action.target)[0]).path
+        def within(boundary):
+            return boundary == '/' or path == boundary.rstrip('/') or path.startswith(boundary.rstrip('/') + '/')
+        if not any(within(p) for p in scope.allowed_paths):
+            raise ValueError('Path outside approved web boundaries')
+        if any(within(p) for p in scope.excluded_paths):
+            raise ValueError('Path explicitly excluded')
 
 
 def action_fingerprint(scope: Scope, action: Action):

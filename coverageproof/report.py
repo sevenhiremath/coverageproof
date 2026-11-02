@@ -37,12 +37,25 @@ def render(snapshot):
     p('Executive summary', 'Heading1')
     p(snapshot['request'])
     p(f'{len(snapshot["findings"])} normalized issue candidates; {len(snapshot["checks"])} declared checks. Candidates are suspected until reviewed. An open TCP service is discovery, not a vulnerability. This report does not establish that any asset is secure.')
+    draft = snapshot.get('report_draft')
+    if draft and draft['current'] and draft['review']:
+        p('AI-assisted explanation reviewed by the analyst', 'Heading2')
+        p(f'Reviewed by {draft["review"]["payload"]["actor"]}; {draft["review"]["created"]}. These explanations do not replace the authoritative check states below.')
+        p('Review reason: ' + draft['review']['payload']['note'])
+        for section in ('executive_summary','limitations'):
+            for item in draft['event']['payload']['draft'][section]:
+                p(item['text'])
+                p(f'Checks: {item["check_ids"]}; observations: {item["evidence_ids"]}')
+    else:
+        p('AI report explanations: no current analyst-accepted draft. The stored assessment state is reported below.')
     p('Assessment methodology and rules of engagement', 'Heading1')
     p('Coverage is limited to the explicitly declared checks. Literal-IP network boundaries and permitted ports are enforced. All runner actions need one-use approval. Redirects and environment proxies are disabled for the supported HTTP runner. Native findings-only exports cannot establish negative checks.')
     p(json.dumps(snapshot['scope'], indent=2))
     p('Tool execution and assets tested', 'Heading1')
     for c in snapshot['checks']:
         p(f'{c["id"]} | {c["action"]["target"]} | {c["condition"]} | {c["state"]}')
+        if c.get('applicability'):
+            p('Applicability review: ' + json.dumps(c['applicability']))
         for a in c['attempts']:
             p(f'Execution {a["id"]}: {a["status"]}; {a["created"]}; {a["detail"]}')
     for a in snapshot['artifacts']:
@@ -66,7 +79,7 @@ def render(snapshot):
         for key in ('asset','issue_class','severity','cvss','confidence','status','impact','remediation'):
             p(f'{key}: {f[key]}')
         if f.get('validation_status'):
-            p(f'Evidence status: {f["validation_status"]}; source tools: {", ".join(f["source_tools"])}')
+            p(f'Evidence status: {f["validation_status"]}; freshness: {f.get("freshness_status", "unknown")}; source tools: {", ".join(f["source_tools"])}')
             p(f['correlation_limit'])
             if f['severity_disagreement']:
                 p(f'Source severity disagreement: {f["source_severities"]}. The highest supplied severity is displayed, not an independently calculated score.')
@@ -84,14 +97,15 @@ def render(snapshot):
     for c in snapshot['checks']:
         p(f'{c["action"]["target"]} | {c["state"]}', 'Heading2')
         for o in c['observations']:
+            p(f'Collection freshness: {o.get("freshness", {}).get("state", "unknown")}')
             p(f'{o["id"]} / {o["artifact"]} {o["receipt"]["source_ref"]}: {o["receipt"]["detail"]}; observed={o["receipt"]["observed_at"]}')
     p('Assumptions, failures, approvals and timestamps', 'Heading1')
-    p('Analyst-supplied imports are not live executions or authenticated attestations. Schema-valid input alone does not establish origin. Scope revisions make earlier plans stale. Import timestamps are preserved, but automatic age-based staleness is not yet implemented. Organizer evaluation authorization must be supplied separately from the self-owned development scope.')
+    p('Analyst-supplied imports are not live executions or authenticated attestations. Schema-valid input alone does not establish origin. Scope revisions make earlier plans stale. Import timestamps are preserved, but timestamps outside the scope-defined evidence window are marked stale, and unknown or future timestamps remain explicit limitations. Organizer evaluation authorization must be supplied separately from the self-owned development scope.')
     p(f'Assessment created {snapshot["created"]}; report snapshot {snapshot["generated"]}. Model reasoning and reviewer sign-off status must be verified before client delivery.')
     for a in snapshot['approvals']:
         p(json.dumps(a))
     for e in snapshot['events']:
-        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted','risk_context_recorded'}:
+        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted','risk_context_recorded','applicability_reviewed'}:
             p(f'{e["created"]} {e["kind"]}: {json.dumps(e["payload"])}')
     def footer(canvas, doc):
         canvas.setFont('Helvetica',8)

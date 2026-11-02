@@ -1,0 +1,47 @@
+name: Check the app
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build test image
+        run: docker build -f Dockerfile.tests -t coverageproof-tests .
+      - name: Run tests without external networking
+        run: >-
+          docker run --rm --network none --cap-drop ALL
+          --security-opt no-new-privileges --read-only
+          --tmpfs /tmp:rw,nosuid,nodev,size=256m
+          --memory 1g --cpus 2 --pids-limit 128 coverageproof-tests
+  owned-nmap:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build only our fixture and restricted discovery images
+        run: |
+          docker build -f Dockerfile.tests -t coverageproof-tests .
+          docker build -f local-lab/Dockerfile.fixture -t coverageproof-fixture .
+          docker build -f local-lab/Dockerfile.nmap -t coverageproof-nmap .
+      - name: Record one owned TCP check and verify its import
+        run: python3 scripts/record_owned_nmap.py
+      - name: Keep genuine outputs and failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: owned-nmap-recording
+          path: output/native-lab/
+          if-no-files-found: warn
+          retention-days: 7

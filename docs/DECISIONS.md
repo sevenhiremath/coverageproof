@@ -10,11 +10,11 @@ We explain the main engineering and assessment choices in plain language. Each n
 | Nmap + Nikto + ZAP imports first | PS-1 accepts native imports; network and web formats can be verified separately | Immediately run all scanners inside the web app | Online runtime has no scanners/Docker; unrestricted subprocess execution would be unsafe | Imports do not demonstrate live orchestration; genuine format tests are still required |
 | Separate restricted runner | Approved actions map to fixed code, not model-written shell | LLM-generated commands | Commands can bypass scope or introduce unsafe flags | Every new action requires a supported template and policy tests |
 | AI for planning and explanations | Requests and follow-up questions need contextual interpretation | Fixed scanner sequence | Fixed order cannot reasonably explain different next steps for different evidence | AI may hallucinate; schema, citations and policy validation are necessary |
-| Deterministic scope and approval policy | Permission must be predictable and testable | Ask the model whether an action is allowed | A persuasive explanation is not authorization | Scope rules are deliberately narrow; hostname/path controls need further work |
+| Deterministic scope and approval policy | Permission must be predictable and testable | Ask the model whether an action is allowed | A persuasive explanation is not authorization | Scope rules are deliberately narrow; hostnames remain unsupported; path boundaries are validated conservatively |
 | Explicit checks and evidence | Makes unattempted, failed and contradictory work visible | Count and deduplicate findings only | Equal finding counts can hide different assessment gaps | Analysts must declare meaningful checks; the plan cannot represent all possible vulnerabilities |
 | Keep uncertainty in findings-only exports | Missing alerts do not prove a rule ran or a route was reached | Treat zero alerts as a pass | That would overstate what the scanner output establishes | More checks stay inconclusive until stronger evidence arrives |
 | Small model provider interface | Supports real AI without tying permission decisions to a framework | Agent swarm; model training | Adds complexity/cost without meeting this short project's immediate needs | Provider/model availability and grounding still need live verification |
-| ReportLab PDF snapshots | Reports can freeze stored evidence/state and be tested | LLM writes the final report freely | Free-form text could contradict saved results | Layout work is manual and report narrative drafting remains pending |
+| ReportLab PDF snapshots | Reports can freeze stored evidence/state and be tested | LLM writes the final report freely | Free-form text could contradict saved results | Layout work is manual; model prose requires separate evidence checks and analyst review |
 
 ## Writing and commits
 Use short direct descriptions: 'Add reasons for suggested checks', 'Fix imports with missing ports', 'Keep both results when tools disagree'. Explain technical terms when they help. Avoid inflated claims such as 'enterprise-grade', 'fully autonomous' and 'production-ready'. Keep AI-assistance disclosure and required third-party notices. Simple wording does not mean pretending AI-written work was entirely human-written.
@@ -30,3 +30,17 @@ A review applies to the observations the analyst actually saw. Automatically car
 
 ## Grouping and prioritization choices
 See CORRELATION_AND_RISK.md for the alternatives table, exact matching boundaries, why we avoid title/LLM-only merging, and why we use attributed risk inputs instead of an invented score. These are implemented choices with tested limits, not claims of full production accuracy.
+
+## Path, time and applicability choices
+
+| Choice | Benefit | Alternative and why we skipped it | Drawback | Verification |
+|---|---|---|---|---|
+| Exact path segments and explicit excluded paths | `/app` does not authorize `/application`; exclusions win | Automatically decode/normalize all URL forms: browser/server interpretations can differ | Encoded, dot, semicolon and duplicate-slash paths are rejected even when benign | Boundary tests cover allowed, excluded and ambiguous paths |
+| Collection-time window in each scope | Importing old output today cannot make it current | Use import time: confuses arrival with assessment time | Unknown timezone remains unknown; clocks and source timestamps are untrusted | Old, unknown, future and native date formats tested |
+| Keep all old receipts but derive current coverage separately | Retains historical contradictions and findings without overstating freshness | Delete old receipts: loses traceability | Historical finding cases still need analyst interpretation | Stored negative preserved while coverage becomes stale/inconclusive |
+| Attributed applicability review only before execution/evidence | Records why a declared check does not apply; cannot hide failed attempts | Service-down means not applicable: would confuse failed reachability with a completed question | A methodology decision is analyst judgment; backend cannot prove its prose | Failure replacement rejected; new execution invalidates review |
+| Docker test job with external networking disabled | Tests need only owned loopback sockets; no scanner execution or host mounts | Direct tests on runner host: simpler but less isolation | Build downloads dependencies; Docker base/dependency ranges can change | Local pytest passes; GitHub container job must separately be observed |
+
+## Why AI report text needs a separate review
+
+The model can draft an executive explanation and limitations, but that prose cannot change findings or coverage. Each statement must cite declared checks and their actual observations. The draft is tied to the assessment state, and only a current analyst-accepted draft enters the PDF. Alternative: include every generated paragraph immediately. We rejected that because valid JSON and real citations do not prove the wording is true. Benefit: explicit review and stale-draft exclusion. Drawback: the analyst must still judge the meaning; actual local-model output quality remains unverified. The unit tests use mocked prose, not live AI.

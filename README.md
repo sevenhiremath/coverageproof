@@ -19,7 +19,7 @@ python -m uvicorn coverageproof.app:app --host 127.0.0.1 --port 8000
 Open http://127.0.0.1:8000. Windows: activate with `.venv\Scripts\Activate.ps1`. Configuration is documented in `.env.example`; export environment variables explicitly (no automatic dotenv loading). Database defaults to `data/coverageproof.sqlite` and persists across restarts. Keep it private; it contains raw assessment evidence.
 
 1. Create a request with an explicitly authorized literal-IP network scope and allowed ports.
-2. Generate a plan (explicitly labeled deterministic development mode unless model secrets configured).
+2. Generate a plan (explicitly labeled deterministic development mode unless the Ollama or API provider is configured).
 3. Inspect a declared check, approve the exact HTTP action, then execute it against your own fixture.
 4. Import native scanner outputs for already-declared exact targets; imports remain labeled imports.
 5. Inspect observations and gaps. Download the assessment PDF.
@@ -46,7 +46,9 @@ Uses a real self-owned HTTP fixture. Generates evidence and a PDF in `output/`. 
 - [Why we chose these approaches](docs/DECISIONS.md)
 - [How grouping and risk priority work](docs/CORRELATION_AND_RISK.md)
 - [Useful ideas from winning projects](docs/WINNER_REFERENCES.md)
-- [Local scanner handoff](docs/LOCAL_HANDOFF.md)
+- [Local model and browser handoff](docs/LOCAL_HANDOFF.md)
+- [Exact web checks awaiting approval](docs/WEB_CHECK_PLAN.md)
+- [Demo and presentation outline](docs/DEMO.md)
 - [Syncing online and local work](docs/SYNC.md)
 - [Status / handoff](docs/STATUS.md)
 - [Submission readiness](docs/SUBMISSION.md)
@@ -70,3 +72,18 @@ The provider calls `http://127.0.0.1:11434/api/chat`, requests JSON matching the
 Inspect a candidate's source evidence, enter a review reason and choose accepted for report, false positive or needs review. New evidence invalidates the earlier review. False positives remain available for traceability. Imported observations without matching declared checks are displayed separately and can be added to the plan after inspection.
 
 The current app also groups the documented ZAP nosniff rule with the corresponding HTTP check at an exact URL, preserves contradictions/source severity differences, and lets analysts record risk context with reasons and evidence references. The rules are intentionally limited; see the grouping and risk document for alternatives and drawbacks.
+
+## Reproduce the isolated backend checks
+
+```bash
+docker build -f Dockerfile.tests -t coverageproof-tests .
+docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --memory 1g --cpus 2 --pids-limit 128 coverageproof-tests
+```
+
+Image build downloads dependencies. Test runtime has no external network; owned loopback fixtures still work. This job does not run native scanners or Ollama. See GitHub Actions for the actual container result.
+
+## AI report explanations
+
+With the Ollama provider configured, draft a short executive explanation and limitations from stored checks. Each statement must cite real checks and their observations. The draft needs analyst acceptance before it enters the PDF. Changed assessment state invalidates the draft. Citation checks cannot prove the prose is true: inspect its meaning before accepting it. This feature is mock-tested; actual local model output remains to be validated.
+
+The first genuine native Nmap recording is in [samples/recorded-nmap](samples/recorded-nmap). It was collected in an isolated owned GitHub fixture and imported successfully; one open port produced an inventory observation and zero vulnerability candidates. Nikto/ZAP still need genuine verification.

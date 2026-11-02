@@ -9,6 +9,7 @@ from .store import Store
 from .planner import plan
 from .runner import execute
 from .report import generate
+from .narrative import draft_report, review_draft
 
 
 def create_app(db_path=None):
@@ -74,6 +75,13 @@ def create_app(db_path=None):
         store.add_check(id,Action.model_validate_json(action_json))
         return RedirectResponse(f'/assessments/{id}',303)
 
+    @app.post('/checks/{id}/applicability')
+    def applicability(id: str, decision: str=Form(), note: str=Form(), actor: str=Form()):
+        store.set_applicability(id,decision,note,actor)
+        with store.tx() as db:
+            c,_,_ = store.check_context(db,id)
+        return RedirectResponse(f'/assessments/{c["assessment"]}',303)
+
     @app.post('/checks/{id}/approve')
     def approve(request: Request,id: str,actor: str=Form()):
         store.approve(id,actor)
@@ -112,6 +120,16 @@ def create_app(db_path=None):
     @app.post('/assessments/{id}/observations/{observation}/adopt')
     def adopt(id: str, observation: str):
         store.adopt_observation(id,observation)
+        return RedirectResponse(f'/assessments/{id}',303)
+
+    @app.post('/assessments/{id}/report-draft')
+    def draft(id: str):
+        draft_report(store,id)
+        return RedirectResponse(f'/assessments/{id}',303)
+
+    @app.post('/assessments/{id}/report-draft/review')
+    def accept_draft(id: str, draft_id: str=Form(), basis: str=Form(), actor: str=Form(), note: str=Form()):
+        review_draft(store,id,draft_id,basis,actor,note)
         return RedirectResponse(f'/assessments/{id}',303)
 
     @app.get('/assessments/{id}/report.pdf')

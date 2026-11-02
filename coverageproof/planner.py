@@ -45,10 +45,16 @@ def validate_proposal(proposal, snapshot):
 
 class DevelopmentProvider:
     def propose(self, snapshot):
-        pending = [c for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT}]
+        pending = [c for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT,State.STALE}]
         real = [o['id'] for c in snapshot['checks'] for o in c['observations']]
         checks = []
-        if pending:
+        conflict = next((f for f in snapshot['findings'] if f.get('validation_status')=='conflicting_observations' and f['issue_class']=='header:x-content-type-options'),None)
+        if conflict:
+            scope=Scope.model_validate(snapshot['scope'])
+            checks.append(ProposedCheck(action=Action(check='header-nosniff',target=conflict['asset'],scope_revision=scope.revision),
+                rationale='Development rule: source observations disagree about this exact response-header condition. Obtain a new bounded observation; timestamps and configuration can explain the difference. This does not establish a vulnerability.',
+                evidence_ids=[e['observation'] for e in conflict['evidence'][:20]]))
+        elif pending:
             c = pending[0]
             checks.append(ProposedCheck(action=Action.model_validate(c['action']),
                 rationale=f'Development rule: declared condition remains {c["state"]}. This is an assessment gap, not evidence of a vulnerability. Collect a bounded receipt for this exact target.', evidence_ids=real[:20]))
@@ -96,7 +102,7 @@ def model_context(snapshot):
         'request': snapshot['request'],
         'scope': snapshot['scope'],
         'checks': [dict(id=c['id'], action=c['action'], condition=c['condition'], state=c['state'],
-            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
+            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],freshness=o.get('freshness'),detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
         'finding_cases': [dict(id=f['id'],asset=f['asset'],issue_class=f['issue_class'],severity=f['severity'],status=f['status'],validation_status=f.get('validation_status','source_reported'),evidence_ids=[e['observation'] for e in f['evidence'][:20]],risk_explanation=f.get('risk_explanation')) for f in snapshot['findings'][:20]],
         'context_limit': 'At most 32 checks, 10 observations each and 1500 characters per observation. Raw artifact bodies are not supplied.'
     }
@@ -104,13 +110,13 @@ def model_context(snapshot):
 
 class OllamaProvider:
     """Uses a locally installed model. No API key or model download is performed."""
-    def propose(self, snapshot):
+    def structured(self, schema, system_prompt, context):
         import json
         model = os.environ.get('OLLAMA_MODEL', 'qwen3.5:9b')
         payload = {
-            'model': model, 'stream': False, 'format': Proposal.model_json_schema(),
-            'messages': [{'role':'system','content':SYSTEM_PROMPT},
-                {'role':'user','content':json.dumps(model_context(snapshot))}],
+            'model': model, 'stream': False, 'format': schema,
+            'messages': [{'role':'system','content':system_prompt},
+                {'role':'user','content':json.dumps(context)}],
             'options': {'temperature':0, 'num_predict':2048, 'num_ctx':8192},
             'keep_alive':0,
         }
@@ -127,14 +133,18 @@ class OllamaProvider:
             result = json.loads(raw)
             if result.get('done') is not True or result.get('done_reason') == 'length':
                 raise ValueError('Local model response was incomplete')
-            proposal = Proposal.model_validate_json(result['message']['content'])
-            if proposal.mode != 'model':
-                raise ValueError('Local model returned invalid reasoning provenance')
-            return proposal
+            return result['message']['content']
         except httpx.HTTPError as e:
             raise ValueError('Local model request failed: ' + type(e).__name__ + '. Run Ollama locally with the configured model; nothing was downloaded.') from e
         except (KeyError, TypeError, json.JSONDecodeError) as e:
             raise ValueError('Local model returned an unsupported response shape') from e
+
+
+    def propose(self, snapshot):
+        proposal = Proposal.model_validate_json(self.structured(Proposal.model_json_schema(), SYSTEM_PROMPT, model_context(snapshot)))
+        if proposal.mode != 'model':
+            raise ValueError('Local model returned invalid reasoning provenance')
+        return proposal
 
 
 class OpenAIProvider:

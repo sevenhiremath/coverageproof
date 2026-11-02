@@ -98,4 +98,4 @@ def test_context_is_displayed_in_ui_pdf_and_model_input(store,scope):
     assert model_context(snap)['finding_cases'][0]['risk_explanation']['exposure']=='lab_only'
     text='\n'.join(page.extract_text() for page in PdfReader(BytesIO(generate(store,a))).pages)
     assert 'lab_only' in text and 'Source severity first' in text
-    assert 'development fixture with no established business impact' in text
+    assert 'development fixture with no established business impact' in ' '.join(text.split())
