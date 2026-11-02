@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.sqlite*
+data/
+output/
+*.egg-info/
+local-capabilities.json
+scanner-artifacts/
