@@ -18,8 +18,8 @@ jobs:
       - name: Inspect versions and help without target traffic
         timeout-minutes: 5
         run: |
-          docker image inspect ghcr.io/sullo/nikto:2.6.1 --format '{{.Id}} {{json .RepoDigests}} {{json .Config.Entrypoint}}' > tool-setup/nikto-image.txt
-          docker image inspect ghcr.io/zaproxy/zaproxy:stable --format '{{.Id}} {{json .RepoDigests}} {{json .Config.Entrypoint}}' > tool-setup/zap-image.txt
+          docker image inspect ghcr.io/sullo/nikto:2.6.1 --format '{{.Id}} {{json .RepoDigests}} {{json .Config}}' > tool-setup/nikto-image.txt
+          docker image inspect ghcr.io/zaproxy/zaproxy:stable --format '{{.Id}} {{json .RepoDigests}} {{json .Config}}' > tool-setup/zap-image.txt
           timeout 60 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 1 --pids-limit 64 ghcr.io/sullo/nikto:2.6.1 -Version > tool-setup/nikto-version.txt 2>&1
           timeout 60 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 1 --pids-limit 64 ghcr.io/sullo/nikto:2.6.1 -Help > tool-setup/nikto-help.txt 2>&1
           timeout 90 docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --memory 1g --cpus 2 --pids-limit 256 ghcr.io/zaproxy/zaproxy:stable zap.sh -version > tool-setup/zap-version.txt 2>&1
