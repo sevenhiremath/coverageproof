@@ -117,7 +117,7 @@ def render(snapshot):
     for a in snapshot['approvals']:
         p(json.dumps(a))
     for e in snapshot['events']:
-        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','finding_reviewed','imported_observation_adopted','risk_context_recorded','applicability_reviewed','model_call_recorded'}:
+        if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','execution_recovered','finding_reviewed','imported_observation_adopted','risk_context_recorded','applicability_reviewed','model_call_recorded'}:
             p(f'{e["created"]} {e["kind"]}: {json.dumps(e["payload"])}')
     def footer(canvas, doc):
         canvas.setFont('CoverageSans',8)
