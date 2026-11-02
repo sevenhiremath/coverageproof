@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS risk_contexts(id TEXT PRIMARY KEY,assessment TEXT REF
 CREATE TABLE IF NOT EXISTS reviews(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),finding TEXT NOT NULL,disposition TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,evidence_digest TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS unmatched(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),artifact TEXT REFERENCES artifacts(id),receipt TEXT NOT NULL,created TEXT NOT NULL,linked_check TEXT REFERENCES checks(id));
 CREATE TABLE IF NOT EXISTS applicability(id TEXT PRIMARY KEY,check_id TEXT REFERENCES checks(id),decision TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,basis TEXT NOT NULL,created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS model_calls(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),purpose TEXT NOT NULL,metadata TEXT NOT NULL,raw_output BLOB NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),snapshot TEXT NOT NULL,sha256 TEXT NOT NULL,created TEXT NOT NULL);
 '''
 
@@ -57,6 +58,18 @@ class Store:
 
     def event(self, db, assessment, kind, payload):
         db.execute('INSERT INTO events VALUES(?,?,?,?,?)', (uid(), assessment, kind, json.dumps(payload), now()))
+
+    def record_model_call(self, assessment, purpose, metadata, raw_output):
+        if purpose not in {'planning','report_draft'} or len(raw_output)>262144:
+            raise ValueError('Invalid private model diagnostic')
+        call=uid()
+        with self.tx() as db:
+            self.context(db,assessment)
+            db.execute('INSERT INTO model_calls VALUES(?,?,?,?,?,?)',(call,assessment,purpose,json.dumps(metadata),raw_output,now()))
+            self.event(db,assessment,'model_call_recorded',{'model_call':call,'purpose':purpose,
+                'provider':metadata['provider'],'outcome':metadata['outcome'],'elapsed_ms':metadata['elapsed_ms'],
+                'output_sha256':metadata.get('output_sha256'),'validation_errors':metadata.get('validation_errors',[])})
+        return call
 
     def create(self, request, scope):
         if not request.strip() or len(request) > 4000:

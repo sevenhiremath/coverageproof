@@ -3,6 +3,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY coverageproof ./coverageproof
 COPY tests ./tests
+COPY scripts ./scripts
 COPY samples/recorded-nmap ./samples/recorded-nmap
 RUN pip install --no-cache-dir '.[test]' && useradd --create-home tester
 USER tester

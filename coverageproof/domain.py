@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Literal
 from hashlib import sha256
 import ipaddress
 import json
@@ -86,7 +87,7 @@ CHECKS = {
 
 
 class Action(Strict):
-    check: str
+    check: Literal['tcp-port', 'web-server', 'web-alerts', 'header-nosniff']
     target: str
     port: int | None = None
     scope_revision: int = Field(ge=1)

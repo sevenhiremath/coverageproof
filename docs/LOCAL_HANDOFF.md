@@ -1,4 +1,6 @@
-# Paste this task into the local ChatGPT app
+# Earlier local model/browser handoff
+
+This task has been attempted. See LOCAL_MODEL_BROWSER_CHECK.md for the actual failure and MODEL_RETRY.md for the next exact task; do not repeat this entire earlier handoff.
 
 Continue CoverageProof from https://github.com/sevenhiremath/coverageproof . Online Work owns the app and is using GitHub Actions for Docker validation. Backend tests and a genuine isolated Nmap recording/import have passed online. Official Nikto/ZAP images, versions and help were inspected online; web target execution awaits exact approval in docs/WEB_CHECK_PLAN.md. Do not repeat capability inspection, build another scanner lab, change Docker networks, tune hardware or download another AI model.
 
