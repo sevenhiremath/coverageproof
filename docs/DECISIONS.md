@@ -27,3 +27,6 @@ The user already has an Ollama model and no paid API access. The app can therefo
 
 ## Why reviews are tied to evidence
 A review applies to the observations the analyst actually saw. Automatically carrying that review over to later imports could hide new contradictions. We therefore record the evidence digest and mark changed findings for review again. This is conservative: even a duplicate reimport prompts another review because it adds an evidence record.
+
+## Grouping and prioritization choices
+See CORRELATION_AND_RISK.md for the alternatives table, exact matching boundaries, why we avoid title/LLM-only merging, and why we use attributed risk inputs instead of an invented score. These are implemented choices with tested limits, not claims of full production accuracy.

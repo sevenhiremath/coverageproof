@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 from uuid import uuid4
 from .adapters import parse
+from .correlation import correlate, risk_key, explain_risk
 from .domain import Action, Scope, Receipt, State, CHECKS, action_fingerprint, canonical_target, coverage, digest, now, validate_scope
 
 
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS observations(id TEXT PRIMARY KEY,check_id TEXT REFERE
 CREATE TABLE IF NOT EXISTS attempts(id TEXT PRIMARY KEY,check_id TEXT REFERENCES checks(id),status TEXT NOT NULL,detail TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS approvals(id TEXT PRIMARY KEY,check_id TEXT REFERENCES checks(id),fingerprint TEXT NOT NULL,actor TEXT NOT NULL,created TEXT NOT NULL,consumed TEXT);
 CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),kind TEXT NOT NULL,payload TEXT NOT NULL,created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS risk_contexts(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),finding TEXT NOT NULL,exposure TEXT NOT NULL,asset_impact TEXT NOT NULL,exploitability TEXT NOT NULL,evidence_ids TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reviews(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),finding TEXT NOT NULL,disposition TEXT NOT NULL,note TEXT NOT NULL,actor TEXT NOT NULL,evidence_digest TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS unmatched(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),artifact TEXT REFERENCES artifacts(id),receipt TEXT NOT NULL,created TEXT NOT NULL,linked_check TEXT REFERENCES checks(id));
 CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY,assessment TEXT REFERENCES assessments(id),snapshot TEXT NOT NULL,sha256 TEXT NOT NULL,created TEXT NOT NULL);
@@ -175,7 +177,8 @@ class Store:
     def snapshot(self, assessment):
         with self.tx() as db:
             row, scope = self.context(db, assessment)
-            checks, findings = [], {}
+            checks, observation_rows = [], []
+            tools={a["id"]:a["tool"] for a in db.execute("SELECT id,tool FROM artifacts WHERE assessment=?",(assessment,))}
             for c in db.execute('SELECT * FROM checks WHERE assessment=? ORDER BY created,id', (assessment,)).fetchall():
                 action = Action.model_validate_json(c['action'])
                 observations = [dict(x) for x in db.execute('SELECT * FROM observations WHERE check_id=?', (c['id'],))]
@@ -185,19 +188,39 @@ class Store:
                 if attempts and state == State.UNATTEMPTED:
                     state = State.FAILED if attempts[-1]['status'] in {'failed','timeout','unsupported'} else State.INCONCLUSIVE
                 for o, r in zip(observations, receipts):
-                    if r.issue_class:
-                        key = (canonical_target(r.target)[0], r.issue_class)
-                        f = findings.setdefault(key, {'id':sha256(repr(key).encode()).hexdigest()[:12], 'asset':key[0], 'issue_class':r.issue_class, 'title':r.title, 'severity':r.severity, 'confidence':r.confidence, 'status':'suspected; analyst review required', 'evidence':[], 'remediation':r.remediation or 'Review the source evidence and confirm applicability before selecting remediation.', 'impact':'Not independently established; depends on affected asset and validation.', 'cvss':None})
-                        f['evidence'].append({'observation':o['id'], 'artifact':o['artifact'], 'source_ref':r.source_ref})
+                    observation_rows.append({'id':o['id'],'artifact':o['artifact'],'tool':tools[o['artifact']],'receipt':r})
                 checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
-            for f in findings.values():
+            findings=correlate(observation_rows)
+            for f in findings:
                 f['evidence_digest'] = digest(sorted(f['evidence'], key=lambda e:e['observation']))
+                risk=db.execute('SELECT * FROM risk_contexts WHERE assessment=? AND finding=? ORDER BY rowid DESC LIMIT 1',(assessment,f['id'])).fetchone()
+                f['risk_context']=dict(risk,evidence_ids=json.loads(risk['evidence_ids'])) if risk else None
+                f['risk_explanation']=explain_risk(f)
                 latest = db.execute('SELECT * FROM reviews WHERE assessment=? AND finding=? ORDER BY rowid DESC LIMIT 1', (assessment, f['id'])).fetchone()
                 f['review'] = dict(latest) if latest else None
                 if latest:
                     f['status'] = latest['disposition'] if latest['evidence_digest'] == f['evidence_digest'] else 'review_outdated'
-            ranked = sorted(findings.values(), key=lambda f: ({'critical':0,'high':1,'medium':2,'low':3,'informational':4,'unknown':5}[f['severity']], f['asset'], f['id']))
+            ranked = sorted(findings, key=risk_key)
             return {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
+
+    def set_risk_context(self, assessment, finding, exposure, asset_impact, exploitability, evidence_ids, note, actor):
+        if exposure not in {'unknown','lab_only','internal_per_owner','external_per_owner'} or asset_impact not in {'unknown','low','medium','high'} or exploitability not in {'not_assessed','analyst_validated'}:
+            raise ValueError('Unsupported risk context value')
+        if not 1<=len(actor.strip())<=200 or not 12<=len(note.strip())<=2000:
+            raise ValueError('Provide analyst identity and a reason of 12-2000 characters')
+        snap=self.snapshot(assessment)
+        f=next((f for f in snap['findings'] if f['id']==finding),None)
+        if f is None:raise KeyError('Finding not found in assessment')
+        allowed={e['observation'] for e in f['evidence']}
+        if not isinstance(evidence_ids,list) or not all(isinstance(x,str) for x in evidence_ids) or not set(evidence_ids)<=allowed:
+            raise ValueError('Risk context must cite existing evidence from this finding')
+        if exploitability=='analyst_validated' and not evidence_ids:
+            raise ValueError('Analyst validation needs evidence references; a scanner title alone is insufficient')
+        with self.tx() as db:
+            id=uid()
+            db.execute('INSERT INTO risk_contexts VALUES(?,?,?,?,?,?,?,?,?,?)',(id,assessment,finding,exposure,asset_impact,exploitability,json.dumps(evidence_ids),note.strip(),actor.strip(),now()))
+            self.event(db,assessment,'risk_context_recorded',{'finding':finding,'exposure':exposure,'asset_impact':asset_impact,'exploitability':exploitability,'evidence_ids':evidence_ids,'note':note.strip(),'actor':actor.strip(),'limitation':'Analyst-declared context, not an independent verification or execution approval.'})
+            return id
 
     def review_finding(self, assessment, finding, disposition, note, actor, evidence_digest):
         if disposition not in {'accepted_for_report', 'false_positive', 'needs_review'}:

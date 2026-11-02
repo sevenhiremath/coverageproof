@@ -19,4 +19,4 @@ Sources inspected 2026-11-02:
 - https://github.com/sullo/nikto/blob/master/program/plugins/nikto_report_json.plugin (default-branch source fetched through GitHub contents API)
 - https://www.zaproxy.org/docs/desktop/addons/report-generation/report-traditional-json/
 
-Declare exact per-target checks before importing. The importer preserves the entire raw artifact and hash. Only matching declared check observations affect the current finding/coverage view. An unmatched endpoint remains in raw evidence, not silently counted as covered. Improving the unmatched-observation review is pending.
+Declare exact per-target checks before importing. The importer preserves the entire raw artifact and hash. Only matching declared check observations affect the current finding/coverage view. Unmatched endpoints appear as preserved observations for analyst review, not silently counted as covered. An analyst can add an observation to the plan without executing a scan.

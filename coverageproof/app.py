@@ -96,6 +96,14 @@ def create_app(db_path=None):
         store.ingest(id,tool,raw)
         return RedirectResponse(f'/assessments/{id}',303)
 
+    @app.post('/assessments/{id}/findings/{finding}/risk')
+    def risk_context(id: str, finding: str, exposure: str=Form(), asset_impact: str=Form(), exploitability: str=Form(), evidence_ids: str=Form(''), note: str=Form(), actor: str=Form()):
+        refs=[s.strip() for s in evidence_ids.split(',') if s.strip()]
+        if len(refs)>20:
+            raise ValueError('At most 20 observation references are accepted')
+        store.set_risk_context(id,finding,exposure,asset_impact,exploitability,refs,note,actor)
+        return RedirectResponse(f'/assessments/{id}',303)
+
     @app.post('/assessments/{id}/findings/{finding}/review')
     def review(id: str, finding: str, disposition: str=Form(), note: str=Form(), actor: str=Form(), evidence_digest: str=Form()):
         store.review_finding(id,finding,disposition,note,actor,evidence_digest)
