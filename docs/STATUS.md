@@ -10,7 +10,7 @@
 - Collection-time windows distinguish current, stale, unknown and future evidence. Import time cannot refresh an old negative receipt.
 - Real self-owned HTTP experiment rerun: two assessments have equal issue counts [1,1]; the second has an unattempted admin check. Approved follow-up updates that check to condition_not_observed while issue count stays 1. Development rules were used, not live AI. Sample size two; no accuracy or time-saving claim.
 - Current report generated from that experiment; all four pages rendered and inspected. PDF/state consistency is tested. The final report layout must be checked after genuine evidence is added.
-- GitHub container test workflow added; its outcome must be observed separately. Runtime disables external networking, capabilities and writes outside bounded temporary storage.
+- GitHub container backend test job passed on commit 3292905. Its first run exposed a PDF-text test that depended on font wrapping; the assertion now normalizes whitespace while still requiring the full sentence. A genuine owned Nmap recording job is being verified separately. Runtime disables external networking, capabilities and writes outside bounded temporary storage.
 
 ## External work needed next
 

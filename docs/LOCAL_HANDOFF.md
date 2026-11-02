@@ -1,6 +1,6 @@
 # Paste this task into the local ChatGPT app
 
-Continue CoverageProof from https://github.com/sevenhiremath/coverageproof . Online Work handles application changes. Your task is genuine local runtime validation. Docker and the 33 old checkpoint tests were already verified; do not repeat hardware inspection, tune the machine or download another AI model. Read current README, STATUS, INTEGRATIONS, DECISIONS and this file. Preserve the original extraction and unrelated Docker resources.
+Continue CoverageProof from https://github.com/sevenhiremath/coverageproof . Online Work handles application changes. Your task is genuine local runtime validation. Online GitHub Actions now also runs the isolated backend tests and a single owned Nmap recording; inspect its actual result before duplicating work. Nikto/ZAP and actual Ollama/browser checks remain pending. Docker and the 33 old checkpoint tests were already verified; do not repeat hardware inspection, tune the machine or download another AI model. Read current README, STATUS, INTEGRATIONS, DECISIONS and this file. Preserve the original extraction and unrelated Docker resources.
 
 ## 1. Get the current source
 
