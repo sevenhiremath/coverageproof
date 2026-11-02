@@ -14,3 +14,8 @@ scripts/check_browser.py uses real Chromium to create a scope and declared check
 | Screenshots, downloads and summary | Review visible behavior and exact checks performed | HTTP-only checks miss layout and download behavior | Human visual inspection is still needed |
 
 Source: official Docker documentation https://playwright.dev/python/docs/docker . No upstream application code copied. See the actual workflow result and artifact summary before claiming browser verification passed.
+
+
+The first real run passed in Chromium 156.0.8078.4: https://github.com/sevenhiremath/coverageproof/actions/runs/41487029418 . Desktop and 390-pixel screenshots were inspected; no horizontal overflow or page errors were reported. This is one automated owned-fixture run, not live-model validation. The later unanswered-check summary has a dedicated backend/PDF consistency test and is being rechecked in Chromium.
+
+The workspace now puts unanswered declared checks near the top, with source-state reasons and links to the relevant check. Benefit: analysts can find the missing question without reading every finding. Alternative: show only issue totals or a broad coverage percentage; either can obscure the declared denominator or uncertainty. Drawback: the declared plan still determines what can be called a gap. Not-applicable reviews remain separate from completed conditions. These same counts appear in the backend snapshot and PDF, rather than being independently calculated in the UI.

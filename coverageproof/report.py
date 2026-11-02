@@ -37,6 +37,9 @@ def render(snapshot):
     p('Executive summary', 'Heading1')
     p(snapshot['request'])
     p(f'{len(snapshot["findings"])} normalized issue candidates; {len(snapshot["checks"])} declared checks. Candidates are suspected until reviewed. An open TCP service is discovery, not a vulnerability. This report does not establish that any asset is secure.')
+    summary = snapshot.get('coverage_summary')
+    if summary:
+        p(f'{summary["unanswered_total"]} unanswered declared check(s); {summary["answered_total"]} conditions with interpretable receipts; {summary["not_applicable_total"]} marked not applicable. Counts refer only to this plan.')
     draft = snapshot.get('report_draft')
     if draft and draft['current'] and draft['review']:
         p('AI-assisted explanation reviewed by the analyst' if draft['event']['payload']['provider']=='ollama' else 'Synthetic report draft for automated tests (not live AI)', 'Heading2')

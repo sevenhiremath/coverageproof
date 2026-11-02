@@ -102,8 +102,11 @@ def main():
             snap=state();root,admin=[c['id'] for c in snap['checks']]
             assert all(c['state']=='unattempted' for c in snap['checks'])
             execute(root)
+            expect(page.get_by_role('heading',name='1 unanswered declared check(s)',exact=True)).to_be_visible()
             snap=state()
             assert len(snap['findings'])==1 and snap['checks'][1]['state']=='unattempted'
+            summary['before_followup_states']=[c['state'] for c in snap['checks']]
+            before_count=len(snap['findings'])
             page.screenshot(path=str(OUT/'before-followup.png'),full_page=True)
             summary['checks'].append('Root execution preserves the unattempted admin gap')
             page.get_by_role('button',name='Review gaps and propose checks',exact=True).click()
@@ -111,9 +114,13 @@ def main():
             assert decision['mode']=='development' and decision['checks'][0]['action']==snap['checks'][1]['action']
             assert decision['checks'][0]['evidence_ids']
             execute(admin)
+            expect(page.get_by_role('heading',name='0 unanswered declared check(s)',exact=True)).to_be_visible()
             snap=state()
             assert len(snap['findings'])==1 and snap['checks'][1]['state']=='condition_not_observed'
             assert all(a['consumed'] for a in snap['approvals'])
+            summary['after_followup_states']=[c['state'] for c in snap['checks']]
+            summary['issue_counts_before_after']=[before_count,len(snap['findings'])]
+            page.screenshot(path=str(OUT/'after-followup.png'),full_page=True)
             summary['checks'].append('Proposed admin follow-up needs approval and updates only its declared condition')
 
             artifact=snap['artifacts'][0]
@@ -144,7 +151,7 @@ def main():
             page.goto(assessment_url)
             assert len(state()['checks'])==3
             summary['checks'].append('Out-of-scope action blocked without a target request')
-            page.screenshot(path=str(OUT/'after-followup.png'),full_page=True)
+            page.screenshot(path=str(OUT/'after-draft-invalidation.png'),full_page=True)
             page.set_viewport_size({'width':390,'height':844})
             page.screenshot(path=str(OUT/'mobile.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Mobile layout overflows horizontally'
