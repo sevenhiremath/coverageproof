@@ -8,6 +8,7 @@ import httpx
 from pydantic import Field, ValidationError
 from .domain import Action, CHECKS, Scope, Strict, State, now, validate_scope, canonical_target
 from .model_diagnostics import record_call, public_validation_failure
+from .groq_provider import GroqProvider
 
 
 class Alternative(Strict):
@@ -253,7 +254,7 @@ class OpenAIProvider:
 def plan(store, assessment):
     snapshot = store.snapshot(assessment)
     mode = os.environ.get('COVERAGEPROOF_PROVIDER','development')
-    providers = {'development':DevelopmentProvider, 'openai':OpenAIProvider, 'ollama':OllamaProvider}
+    providers = {'development':DevelopmentProvider, 'openai':OpenAIProvider, 'ollama':OllamaProvider, 'groq':GroqProvider}
     if mode not in providers:
         raise ValueError('Unknown model provider')
     provider=providers[mode]()

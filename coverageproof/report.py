@@ -51,7 +51,7 @@ def render(snapshot):
         p(f'{summary["unanswered_total"]} unanswered declared check(s); {summary["answered_total"]} conditions with interpretable receipts; {summary["not_applicable_total"]} marked not applicable. Counts refer only to this plan.')
     draft = snapshot.get('report_draft')
     if draft and draft['current'] and draft['review']:
-        p('AI-assisted explanation reviewed by the analyst' if draft['event']['payload']['provider']=='ollama' else 'Synthetic report draft for automated tests (not live AI)', 'Heading2')
+        p('AI-assisted explanation reviewed by the analyst' if draft['event']['payload']['provider'] in {'ollama','groq'} else 'Synthetic report draft for automated tests (not live AI)', 'Heading2')
         p(f'Reviewed by {draft["review"]["payload"]["actor"]}; {draft["review"]["created"]}. These explanations do not replace the authoritative check states below.')
         p('Review reason: ' + draft['review']['payload']['note'])
         for section in ('executive_summary','limitations'):
