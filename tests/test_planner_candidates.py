@@ -96,3 +96,23 @@ def test_initial_plan_schema_allows_no_citations(store, scope):
     snap = store.snapshot(store.create('Initial assessment', scope))
     assert model_context(snap)['citation_policy']['required'] is False
     assert 'minItems' not in model_plan_schema(snap)['$defs']['ProposedCheck']['properties']['evidence_ids']
+
+
+@pytest.mark.parametrize('outcome', ['failed','inconclusive','conflicting_observations'])
+def test_uninterpretable_evidence_does_not_prove_a_condition(outcome):
+    from coverageproof.planner import evidence_semantics
+    meaning=evidence_semantics({'receipt':{'outcome':outcome}})
+    assert 'cannot prove presence or absence' in meaning
+
+
+def test_stale_finding_is_historical_context():
+    from coverageproof.planner import evidence_semantics
+    assert 'current condition is unknown' in evidence_semantics({
+        'receipt':{'outcome':'finding_supported'},'freshness':{'state':'stale'}})
+
+
+def test_model_context_qualifies_each_observation(store, scope):
+    a, _, _=setup(store,scope)
+    context=model_context(store.snapshot(a))
+    observation=context['checks'][0]['observations'][0]
+    assert 'this exact target' in observation['evidence_semantics']

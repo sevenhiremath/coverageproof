@@ -13,7 +13,7 @@ from .groq_provider import GroqProvider
 
 class Alternative(Strict):
     tool: Literal['nmap', 'nikto', 'zap', 'http', 'no_action']
-    reason_not_chosen: str = Field(min_length=12, max_length=1000)
+    reason_not_chosen: str = Field(min_length=12, max_length=1000, description='Explain why this exact alternative was rejected. For no_action, explain why abstaining would leave a useful declared question unanswered; do not compare other tools or imply prior execution approval is required.')
 
 
 class ProposedCheck(Strict):
@@ -131,6 +131,7 @@ SYSTEM_PROMPT = (
     'Action.check must be one of tcp-port, web-server, web-alerts, header-nosniff. '
     'Never invent a no-action check. If no useful action applies, use checks=[] and explain the limitation. '
     'For an existing plan, select exact actions from eligible_followups or return checks=[]. '
+    'An empty eligible_followups list means no declared action may be proposed. Never invent a root check to broaden coverage. '
     'Their policy_verdict is computed by the backend. Do not reinterpret it from path strings. '
     'allowed_paths are subtree boundaries: / includes /admin unless an exclusion denies it. '
     'Proposal and execution are separate stages. You are being asked ONLY to propose, never to execute. '
@@ -142,14 +143,32 @@ SYSTEM_PROMPT = (
     'A zero finding count does not answer an unattempted declared check. '
     'Use the exact permitted IP target and scope revision. Never expand authorization or output shell commands. '
     'For each check give a short reason, a relevant alternative tool or no_action with why it was not chosen, and a concrete drawback. '
+    'If alternative.tool is no_action, explain why abstaining leaves this useful declared question unanswered; comparisons with other tools do not explain abstention. '
+    'State actual limitations such as one response at one time; do not invent observed interference or rate limiting. '
     'When citation_policy.required is true, every proposed check must include at least one listed observation ID in evidence_ids. '
     'An unattempted target has no direct evidence: cite relevant prior observations as the reason to investigate, '
     'and explicitly distinguish that context from evidence about the new target. Never imply a finding transfers between routes. '
     'Empty evidence_ids is allowed only when no observations exist. Missing coverage is not a vulnerability. '
+    'A failed or inconclusive observation does not establish whether a header is present or missing. '
+    'Stale evidence describes a prior condition, not the current condition. Use evidence_semantics to qualify every cited claim. '
     'Do not repeat completed checks without a concrete conflict or failure to investigate. '
     'If the declared questions are answered, return no checks and explain the remaining limits. '
     'Do not invent CVEs, scores or evidence. A proposal cannot grant execution approval.'
 )
+
+
+def evidence_semantics(observation):
+    outcome = observation['receipt']['outcome']
+    freshness = observation.get('freshness') or {}
+    if freshness.get('state') in {'future_timestamp', 'unknown'}:
+        return 'Observation time is unverified; do not claim this establishes the current condition.'
+    if outcome == State.STALE or freshness.get('state') == 'stale':
+        return 'Historical context only; current condition is unknown.'
+    if outcome == State.FINDING:
+        return 'Supports only the recorded condition on this exact target at the observation time.'
+    if outcome == State.NOT_OBSERVED:
+        return 'Recorded condition was not observed on this exact target at that time; other conditions remain unknown.'
+    return 'No interpretable condition result. This may justify investigation but cannot prove presence or absence of a finding.'
 
 
 def model_context(snapshot):
@@ -166,7 +185,7 @@ def model_context(snapshot):
         'request': snapshot['request'],
         'scope': snapshot['scope'],
         'checks': [dict(id=c['id'], action=c['action'], condition=c['condition'], state=c['state'],
-            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],freshness=o.get('freshness'),detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
+            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],freshness=o.get('freshness'),evidence_semantics=evidence_semantics(o),detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
         'finding_cases': [dict(id=f['id'],asset=f['asset'],issue_class=f['issue_class'],severity=f['severity'],status=f['status'],validation_status=f.get('validation_status','source_reported'),evidence_ids=[e['observation'] for e in f['evidence'][:20]],risk_explanation=f.get('risk_explanation')) for f in snapshot['findings'][:20]],
         'context_limit': 'At most 32 checks, 10 observations each and 1500 characters per observation. Raw artifact bodies are not supplied.'
     }
