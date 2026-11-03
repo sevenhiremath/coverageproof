@@ -6,7 +6,7 @@ from hashlib import sha256
 from typing import Literal
 import httpx
 from pydantic import Field, ValidationError
-from .domain import Action, CHECKS, Scope, Strict, State, now, validate_scope
+from .domain import Action, CHECKS, Scope, Strict, State, now, validate_scope, canonical_target
 from .model_diagnostics import record_call, public_validation_failure
 
 
@@ -35,11 +35,39 @@ def model_plan_schema():
     return schema
 
 
+def eligible_followups(snapshot):
+    """Backend policy facts for declared work, never model-granted permission."""
+    scope = Scope.model_validate(snapshot['scope'])
+    unresolved = {State.UNATTEMPTED, State.FAILED, State.INCONCLUSIVE, State.CONFLICT, State.STALE}
+    conflicts = {f['asset'] for f in snapshot['findings']
+                 if f.get('validation_status') == 'conflicting_observations'
+                 and f['issue_class'] == 'header:x-content-type-options'}
+    candidates = []
+    for check in snapshot['checks']:
+        action = Action.model_validate(check['action'])
+        conflict = action.check == 'header-nosniff' and canonical_target(action.target)[0] in conflicts
+        if check['state'] not in unresolved and not conflict:
+            continue
+        try:
+            validate_scope(scope, action)
+        except ValueError:
+            continue
+        candidates.append({'check_id':check['id'], 'action':action.model_dump(),
+            'state':check['state'], 'policy_verdict':'allowed',
+            'reason':'Conflicting observations need investigation' if conflict else 'Declared question remains unanswered',
+            'execution_mode':'live_approved_http' if action.check == 'header-nosniff' else 'import_only',
+            'requires_new_execution_approval':True})
+    return candidates
+
+
 def validate_proposal(proposal, snapshot):
     scope = Scope.model_validate(snapshot['scope'])
     real = {o['id'] for c in snapshot['checks'] for o in c['observations']}
+    eligible = {json.dumps(c['action'], sort_keys=True) for c in eligible_followups(snapshot)}
     for item in proposal.checks:
         validate_scope(scope, item.action)
+        if proposal.mode == 'model' and snapshot['checks'] and json.dumps(item.action.model_dump(), sort_keys=True) not in eligible:
+            raise ValueError('Follow-up must select an eligible declared action; completed checks need recorded conflict before repetition')
         if proposal.mode == 'model' and (not item.alternatives or len(item.drawback.strip()) < 12):
             raise ValueError('Model must explain an alternative and the chosen action drawback')
         selected_tool = CHECKS[item.action.check]['tool']
@@ -99,6 +127,10 @@ SYSTEM_PROMPT = (
     'Return mode=model and valid JSON matching the supplied schema. Interpret the request and choose only registered checks. '
     'Action.check must be one of tcp-port, web-server, web-alerts, header-nosniff. '
     'Never invent a no-action check. If no useful action applies, use checks=[] and explain the limitation. '
+    'For an existing plan, select exact actions from eligible_followups or return checks=[]. '
+    'Their policy_verdict is computed by the backend. Do not reinterpret it from path strings. '
+    'allowed_paths are subtree boundaries: / includes /admin unless an exclusion denies it. '
+    'No candidate is execution approval. Import-only actions require native evidence, not live execution. '
     'A zero finding count does not answer an unattempted declared check. '
     'Use the exact permitted IP target and scope revision. Never expand authorization or output shell commands. '
     'For each check give a short reason, a relevant alternative tool or no_action with why it was not chosen, and a concrete drawback. '
@@ -113,6 +145,8 @@ def model_context(snapshot):
     return {
         'registry': {key:dict(value, execution_mode='live_approved_http' if key=='header-nosniff' else 'import_only') for key,value in CHECKS.items()},
         'incomplete_declared_checks': [dict(id=c['id'],action=c['action'],state=c['state']) for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT,State.STALE}][:12],
+        'eligible_followups': eligible_followups(snapshot)[:32],
+        'policy_semantics': 'Paths are subtree boundaries. / includes all paths except explicit exclusions. Candidate allowed verdicts come from backend validation; approval is separate.',
         'request': snapshot['request'],
         'scope': snapshot['scope'],
         'checks': [dict(id=c['id'], action=c['action'], condition=c['condition'], state=c['state'],
