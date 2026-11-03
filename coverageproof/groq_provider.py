@@ -55,7 +55,7 @@ class GroqProvider:
 
     def propose(self, snapshot):
         from .planner import Proposal, model_plan_schema, SYSTEM_PROMPT, model_context
-        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(), SYSTEM_PROMPT, model_context(snapshot)))
+        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)))
         if proposal.mode != 'model':
             raise ValueError('Groq returned invalid reasoning provenance')
         return proposal

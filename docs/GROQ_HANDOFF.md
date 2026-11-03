@@ -37,3 +37,22 @@ User-reported run at 5c4f519 returned HTTP 200 in 1321.25 ms, 3.53 seconds overa
 The follow-up fix explicitly labels the stage proposal_only and each eligible action proposal_allowed_now. Execution approval is still required afterward. The prompt explains that missing execution approval alone is not a reason to abstain. We retain legitimate abstention rather than forcing a nonempty answer. Alternative: fabricate an approval before planning; rejected because that reverses the analyst workflow. Drawback: clearer instructions still cannot guarantee useful reasoning.
 
 For the next single live test use branch fix/proposal-approval-stages, not the previous Groq branch. Keep all assertions, diagnostics and privacy instructions above. No live success is claimed by the prompt regression test.
+
+
+## Citation contract follow-up
+The user-reported run on 972e6e9 selected the correct /admin action but returned
+empty evidence_ids. Validation rejected it in 4.89 seconds overall (2497.87 ms
+provider). No follow-up ran. Private evidence and notes at 889130a remain the
+record of that failed run.
+
+The model schema now requires at least one citation when stored observations
+exist, matching the unchanged backend validator. Context states that requirement
+explicitly. Prior route observations may motivate investigation, but cannot prove
+a finding on an unattempted route. Initial plans without observations still allow
+empty citations; abstention remains valid. No citations are inserted by the backend.
+Best-effort structured output can still fail, so this is not a live success claim.
+
+Run the existing owned experiment once on this branch using the existing private
+key and Python environment. Preserve both previous failures. Keep assertions
+unchanged and report the actual decision, citations, timings and diagnostics.
+Do not retry automatically, start Ollama or substitute another provider.
