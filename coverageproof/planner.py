@@ -18,6 +18,8 @@ class Alternative(Strict):
 
 class ProposedCheck(Strict):
     action: Action
+    candidate_id: str | None = None
+    basis: list[dict] = Field(default_factory=list, max_length=20)
     rationale: str = Field(min_length=12, max_length=1500)
     evidence_ids: list[str] = Field(max_length=20)
     alternatives: list[Alternative] = Field(default_factory=list, max_length=5)
@@ -25,7 +27,8 @@ class ProposedCheck(Strict):
 
 
 class Proposal(Strict):
-    mode: Literal['development', 'model']
+    mode: Literal['development', 'model', 'backend']
+    contract_version: Literal['legacy-v1', 'candidate-v2'] = 'legacy-v1'
     explanation: str = Field(min_length=12, max_length=3000)
     checks: list[ProposedCheck] = Field(max_length=12)
 
@@ -74,13 +77,31 @@ def validate_proposal(proposal, snapshot):
         if proposal.mode == 'model' and (not item.alternatives or len(item.drawback.strip()) < 12):
             raise ValueError('Model must explain an alternative and the chosen action drawback')
         selected_tool = CHECKS[item.action.check]['tool']
-        if any(a.tool == selected_tool for a in item.alternatives):
+        if proposal.contract_version == 'legacy-v1' and any(a.tool == selected_tool for a in item.alternatives):
             raise ValueError('Rejected alternative must differ from the selected tool')
         if not set(item.evidence_ids) <= real:
             raise ValueError('Model cited nonexistent observation IDs')
         # Analysis based on observations must cite them; initial plans can cite none.
-        if real and not item.evidence_ids:
+        if real and not item.evidence_ids and proposal.contract_version == 'legacy-v1':
             raise ValueError('Follow-up reasoning must cite stored observations')
+    if proposal.contract_version == 'candidate-v2':
+        from .selection import Basis
+        if len({i.candidate_id for i in proposal.checks}) != len(proposal.checks):
+            raise ValueError('Duplicate selected candidate')
+        # Recheck typed references even if a caller bypasses provider decoding.
+        for item in proposal.checks:
+            candidates={c['check_id']:c for c in eligible_followups(snapshot)}
+            if item.candidate_id not in candidates or candidates[item.candidate_id]['action'] != item.action.model_dump():
+                raise ValueError('Candidate changed or is no longer eligible')
+            for basis in item.basis:
+                Basis.model_validate(basis)
+            if set(item.evidence_ids) != {b['id'] for b in item.basis if b['kind']=='observation'}:
+                raise ValueError('Observation citations must match typed basis')
+            allowed={'check':{item.candidate_id},
+                'observation':{o['id'] for c in snapshot['checks'] if c['action']==item.action.model_dump() for o in c['observations']},
+                'finding':{f['id'] for f in snapshot['findings'] if f['asset']==item.action.target}}
+            if not item.basis or any(b.get('id') not in allowed.get(b.get('kind'),set()) for b in item.basis):
+                raise ValueError('Basis must relate to the selected candidate')
     return proposal
 
 
@@ -191,6 +212,20 @@ def model_context(snapshot):
     }
 
 
+def provider_contract(snapshot):
+    if snapshot['checks']:
+        from .selection import Decision, PROMPT
+        return Decision.model_json_schema(), PROMPT, model_context(snapshot)
+    return model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)
+
+
+def decode_plan(raw, snapshot):
+    if snapshot['checks']:
+        from .selection import Decision, resolve
+        return resolve(Decision.model_validate_json(raw), snapshot)
+    return Proposal.model_validate_json(raw)
+
+
 class OllamaProvider:
     """Uses a locally installed model. No API key or model download is performed."""
     def structured(self, schema, system_prompt, context):
@@ -251,7 +286,7 @@ class OllamaProvider:
 
 
     def propose(self, snapshot):
-        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)))
+        proposal = decode_plan(self.structured(*provider_contract(snapshot)), snapshot)
         if proposal.mode != 'model':
             raise ValueError('Local model returned invalid reasoning provenance')
         return proposal
@@ -272,14 +307,14 @@ class OpenAIProvider:
             'Do not claim an alternative is worse in general; compare it for this exact task. '
             'Scope is already registered: never expand it. No shell, exploitation or invented CVEs. '
             'Use exact supported literal-IP targets. A proposal never grants execution authority.')
-        import json
+        schema, prompt, context = provider_contract(snapshot)
         with httpx.Client(timeout=30, trust_env=False) as client:
             r = client.post('https://api.openai.com/v1/chat/completions', headers={'Authorization':f'Bearer {key}'}, json={
-                'model':model, 'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(model_context(snapshot))}],
-                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':model_plan_schema(snapshot)}}})
+                'model':model, 'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(context)}],
+                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':schema}}})
             if r.status_code != 200:
                 raise ValueError(f'Model provider failed (HTTP {r.status_code}); no fallback presented as AI')
-            proposal = Proposal.model_validate_json(r.json()['choices'][0]['message']['content'])
+            proposal = decode_plan(r.json()['choices'][0]['message']['content'], snapshot)
             if proposal.mode != 'model':
                 raise ValueError('Invalid model provenance')
             return proposal
@@ -291,9 +326,14 @@ def plan(store, assessment):
     providers = {'development':DevelopmentProvider, 'openai':OpenAIProvider, 'ollama':OllamaProvider, 'groq':GroqProvider}
     if mode not in providers:
         raise ValueError('Unknown model provider')
+    if mode != 'development' and snapshot['checks'] and not eligible_followups(snapshot):
+        proposal=Proposal(mode='backend',explanation='Backend eligibility check: no declared actions are eligible.',checks=[])
+        store.save_decision(assessment,dict(proposal.model_dump(mode='json'),provider='backend'))
+        return proposal
     provider=providers[mode]()
     try:
         proposal = validate_proposal(provider.propose(snapshot), snapshot)
+        validate_proposal(proposal, store.snapshot(assessment))
     except ValueError as error:
         call=record_call(store,assessment,'planning',provider,'rejected',error)
         with store.tx() as db:

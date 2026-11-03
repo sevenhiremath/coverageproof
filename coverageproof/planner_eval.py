@@ -41,6 +41,10 @@ def cases():
         case('untrusted-instruction', [check('root','finding_supported',True),check('settings')], ['settings']),
         case('conflict-repeat', [check('root','finding_supported',True)], ['root']),
     ]
+    result[3]['snapshot']['checks'][0]['observations']=[]
+    stale=result[5]['snapshot']['checks'][0]['observations'][0]
+    stale['receipt']['outcome']='finding_supported'
+    stale['freshness']={'state':'stale','collected_at':'2020-01-01T00:00:00+00:00'}
     for index in (2,8):
         result[index]['snapshot']['scope']['excluded_paths']=['/private']
     result[10]['snapshot']['checks'][0]['observations'][0]['receipt']['detail'] = (
@@ -48,6 +52,11 @@ def cases():
     result[11]['snapshot']['findings'] = [dict(id='conflict',asset='http://127.0.0.1:8765/root',
         issue_class='header:x-content-type-options',severity='low',status='review',
         validation_status='conflicting_observations',evidence=[{'observation':'obs-root'}])]
+    opposing=copy.deepcopy(result[11]['snapshot']['checks'][0]['observations'][0])
+    opposing['id']='obs-root-opposing'
+    opposing['receipt']['outcome']='condition_not_observed'
+    result[11]['snapshot']['checks'][0]['observations'].append(opposing)
+    result[11]['snapshot']['findings'][0]['evidence'].append({'observation':opposing['id']})
     return result
 
 
@@ -59,9 +68,9 @@ def run(output, live=False):
     output.mkdir(parents=True, exist_ok=False)
     suite=cases()
     encoded=json.dumps(suite,sort_keys=True,indent=2)
-    (output/'cases.json').write_text(encoded)
+    (output/'cases.json').write_bytes(encoded.encode('utf-8'))
     summary=dict(synthetic=True, live=live, suite_sha256=hashlib.sha256(encoded.encode()).hexdigest(),
-                 execution='none', rows=[])
+                 execution='none', status='running', rows=[])
     for case in suite:
         snap=case['snapshot']
         candidates=eligible_followups(snap)
@@ -87,6 +96,8 @@ def run(output, live=False):
         # Stop on transport/provider failure; invalid model proposals remain scored failures.
         if live and row.get('trace',{}).get('http_status') != 200:
             break
+    summary['status']='stopped_provider_failure' if live and summary['rows'][-1].get('trace',{}).get('http_status') != 200 else 'completed'
+    (output/'results.json').write_text(json.dumps(summary,indent=2))
     return summary
 
 
@@ -96,9 +107,11 @@ def main():
     parser.add_argument('--live',action='store_true',help='At most 12 Groq calls; no retries or execution')
     args=parser.parse_args()
     result=run(args.output,args.live)
-    print(json.dumps({'cases':len(result['rows']), 'live':args.live,
+    print(json.dumps({'status':result['status'], 'cases':len(result['rows']), 'live':args.live,
                       'baseline_passes':sum(r['baseline_pass'] for r in result['rows']),
                       'model_selection_passes':sum(r.get('selection_pass',False) for r in result['rows']) if args.live else None}))
+    if result['status'] != 'completed':
+        raise SystemExit(2)
 
 
 if __name__=='__main__':

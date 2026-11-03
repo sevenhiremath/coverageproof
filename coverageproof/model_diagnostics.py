@@ -5,7 +5,7 @@ import sqlite3
 from pydantic import ValidationError
 
 
-PUBLIC_FIELDS = {'mode','explanation','checks','action','check','target','port','scope_revision','rationale',
+PUBLIC_FIELDS = {'selections','candidate_id','basis','kind','id','reason','contract_version','mode','explanation','checks','action','check','target','port','scope_revision','rationale',
     'evidence_ids','alternatives','tool','reason_not_chosen','drawback','executive_summary','limitations','text','check_ids'}
 
 

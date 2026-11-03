@@ -60,7 +60,7 @@ def test_unknown_action_is_retained_privately_without_closing_gap(store,scope,mo
     assert saved['raw_output']==raw.encode()
     assert meta['output_sha256']==hashlib.sha256(raw.encode()).hexdigest()
     assert meta['output_complete'] and meta['outcome']=='rejected'
-    assert meta['validation_errors'][0]['location']==['checks',0,'action','check']
+    assert any(e['type']=='extra_forbidden' for e in meta['validation_errors'])
     assert 'Private thinking' not in saved['raw_output'].decode()
     snap=store.snapshot(a)
     assert len(snap['checks'])==1 and snap['checks'][0]['state']=='unattempted'
@@ -83,7 +83,7 @@ def test_semantic_citation_rejection_keeps_original_response(store,scope,monkeyp
 def test_empty_check_list_does_not_close_unattempted_check(store,scope,monkeypatch):
     a=store.create('Still an unanswered header check',scope)
     store.add_check(a,Action(check='header-nosniff',target='http://127.0.0.1:8765/admin',scope_revision=1))
-    mocked(monkeypatch,json.dumps({'mode':'model','explanation':'The model declined to propose a useful action in this unit fixture.','checks':[]}))
+    mocked(monkeypatch,json.dumps({'mode':'model','explanation':'The model declined to propose a useful action in this unit fixture.','selections':[]}))
     assert plan(store,a).checks==[]
     assert store.snapshot(a)['checks'][0]['state']=='unattempted'
 

@@ -54,8 +54,8 @@ class GroqProvider:
             self.trace['output_sha256'] = sha256(self.raw_output).hexdigest() if self.raw_output else None
 
     def propose(self, snapshot):
-        from .planner import Proposal, model_plan_schema, SYSTEM_PROMPT, model_context
-        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)))
+        from .planner import decode_plan, provider_contract
+        proposal = decode_plan(self.structured(*provider_contract(snapshot)), snapshot)
         if proposal.mode != 'model':
             raise ValueError('Groq returned invalid reasoning provenance')
         return proposal
