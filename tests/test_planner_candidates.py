@@ -56,3 +56,19 @@ def test_conflict_allows_a_targeted_repeat_and_no_action_is_valid(store, scope):
     validate_proposal(proposal(snap['checks'][0]['action'], [snap['checks'][0]['observations'][0]['id']]), snap)
     empty = Proposal(mode='model', explanation='Additional analyst information is needed before choosing a useful action.', checks=[])
     assert validate_proposal(empty, snap).checks == []
+
+
+def test_proposals_are_available_before_execution_approval(store, scope):
+    from coverageproof.planner import SYSTEM_PROMPT
+    a = store.create('Inspect the admin response', scope)
+    store.add_check(a, Action(check='header-nosniff', target='http://127.0.0.1:8765/admin', scope_revision=1))
+    snap = store.snapshot(a)
+    assert not snap['approvals']
+    context = model_context(snap)
+    candidate = context['eligible_followups'][0]
+    assert candidate['proposal_allowed_now'] is True
+    assert candidate['execution_approval_required_after_proposal'] is True
+    assert 'proposal_only' in context['workflow_stage']
+    assert 'may be proposed now without an existing execution approval' in SYSTEM_PROMPT
+    validate_proposal(proposal(candidate['action'], []), snap)
+    assert not store.snapshot(a)['approvals']
