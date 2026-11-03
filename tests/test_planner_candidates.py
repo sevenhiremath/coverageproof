@@ -72,3 +72,27 @@ def test_proposals_are_available_before_execution_approval(store, scope):
     assert 'may be proposed now without an existing execution approval' in SYSTEM_PROMPT
     validate_proposal(proposal(candidate['action'], []), snap)
     assert not store.snapshot(a)['approvals']
+
+
+def test_followup_citations_required_without_transferring_findings(store, scope):
+    from coverageproof.planner import model_plan_schema
+    a, _, _ = setup(store, scope)
+    snap = store.snapshot(a)
+    context = model_context(snap)
+    assert context['citation_policy']['required'] is True
+    assert model_plan_schema(snap)['$defs']['ProposedCheck']['properties']['evidence_ids']['minItems'] == 1
+    action = context['eligible_followups'][0]['action']
+    with pytest.raises(ValueError, match='must cite stored observations'):
+        validate_proposal(proposal(action, []), snap)
+    with pytest.raises(ValueError, match='nonexistent observation'):
+        validate_proposal(proposal(action, ['invented']), snap)
+    evidence = [context['checks'][0]['observations'][0]['id']]
+    validate_proposal(proposal(action, evidence), snap)
+    assert snap['checks'][1]['observations'] == []
+
+
+def test_initial_plan_schema_allows_no_citations(store, scope):
+    from coverageproof.planner import model_plan_schema
+    snap = store.snapshot(store.create('Initial assessment', scope))
+    assert model_context(snap)['citation_policy']['required'] is False
+    assert 'minItems' not in model_plan_schema(snap)['$defs']['ProposedCheck']['properties']['evidence_ids']

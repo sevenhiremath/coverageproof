@@ -30,9 +30,11 @@ class Proposal(Strict):
     checks: list[ProposedCheck] = Field(max_length=12)
 
 
-def model_plan_schema():
+def model_plan_schema(snapshot=None):
     schema=Proposal.model_json_schema()
     schema['properties']['mode']={'type':'string','const':'model'}
+    if snapshot and any(c['observations'] for c in snapshot['checks']):
+        schema['$defs']['ProposedCheck']['properties']['evidence_ids']['minItems'] = 1
     return schema
 
 
@@ -140,7 +142,10 @@ SYSTEM_PROMPT = (
     'A zero finding count does not answer an unattempted declared check. '
     'Use the exact permitted IP target and scope revision. Never expand authorization or output shell commands. '
     'For each check give a short reason, a relevant alternative tool or no_action with why it was not chosen, and a concrete drawback. '
-    'Cite real observation IDs for follow-up reasoning. Missing coverage is not a vulnerability. '
+    'When citation_policy.required is true, every proposed check must include at least one listed observation ID in evidence_ids. '
+    'An unattempted target has no direct evidence: cite relevant prior observations as the reason to investigate, '
+    'and explicitly distinguish that context from evidence about the new target. Never imply a finding transfers between routes. '
+    'Empty evidence_ids is allowed only when no observations exist. Missing coverage is not a vulnerability. '
     'Do not repeat completed checks without a concrete conflict or failure to investigate. '
     'If the declared questions are answered, return no checks and explain the remaining limits. '
     'Do not invent CVEs, scores or evidence. A proposal cannot grant execution approval.'
@@ -148,7 +153,11 @@ SYSTEM_PROMPT = (
 
 
 def model_context(snapshot):
+    observation_ids = [o['id'] for c in snapshot['checks'] for o in c['observations']]
     return {
+        'citation_policy': {'required': bool(observation_ids),
+            'minimum_ids_per_proposed_check': 1 if observation_ids else 0,
+            'meaning': 'Citations support the reason to investigate; they do not prove a finding on an unattempted target.'},
         'registry': {key:dict(value, execution_mode='live_approved_http' if key=='header-nosniff' else 'import_only') for key,value in CHECKS.items()},
         'incomplete_declared_checks': [dict(id=c['id'],action=c['action'],state=c['state']) for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT,State.STALE}][:12],
         'eligible_followups': eligible_followups(snapshot)[:32],
@@ -223,7 +232,7 @@ class OllamaProvider:
 
 
     def propose(self, snapshot):
-        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(), SYSTEM_PROMPT, model_context(snapshot)))
+        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)))
         if proposal.mode != 'model':
             raise ValueError('Local model returned invalid reasoning provenance')
         return proposal
@@ -248,7 +257,7 @@ class OpenAIProvider:
         with httpx.Client(timeout=30, trust_env=False) as client:
             r = client.post('https://api.openai.com/v1/chat/completions', headers={'Authorization':f'Bearer {key}'}, json={
                 'model':model, 'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(model_context(snapshot))}],
-                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':Proposal.model_json_schema()}}})
+                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':model_plan_schema(snapshot)}}})
             if r.status_code != 200:
                 raise ValueError(f'Model provider failed (HTTP {r.status_code}); no fallback presented as AI')
             proposal = Proposal.model_validate_json(r.json()['choices'][0]['message']['content'])
