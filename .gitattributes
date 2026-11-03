@@ -1,0 +1,2 @@
+# Recorded evidence must retain exact bytes on every platform.
+/samples/recorded-nmap/** -text
