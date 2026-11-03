@@ -57,7 +57,7 @@ def eligible_followups(snapshot):
             'state':check['state'], 'policy_verdict':'allowed',
             'reason':'Conflicting observations need investigation' if conflict else 'Declared question remains unanswered',
             'execution_mode':'live_approved_http' if action.check == 'header-nosniff' else 'import_only',
-            'requires_new_execution_approval':True})
+            'proposal_allowed_now':True, 'execution_approval_required_after_proposal':True})
     return candidates
 
 
@@ -131,6 +131,11 @@ SYSTEM_PROMPT = (
     'For an existing plan, select exact actions from eligible_followups or return checks=[]. '
     'Their policy_verdict is computed by the backend. Do not reinterpret it from path strings. '
     'allowed_paths are subtree boundaries: / includes /admin unless an exclusion denies it. '
+    'Proposal and execution are separate stages. You are being asked ONLY to propose, never to execute. '
+    'Every eligible candidate may be proposed now without an existing execution approval. '
+    'The analyst reviews the proposal and grants exact execution approval afterward. '
+    'Do not return an empty list solely because execution approval has not yet been granted. '
+    'Return an empty list when no useful eligible action fits the objective or essential information is missing; explain the actual reason. '
     'No candidate is execution approval. Import-only actions require native evidence, not live execution. '
     'A zero finding count does not answer an unattempted declared check. '
     'Use the exact permitted IP target and scope revision. Never expand authorization or output shell commands. '
@@ -147,6 +152,7 @@ def model_context(snapshot):
         'registry': {key:dict(value, execution_mode='live_approved_http' if key=='header-nosniff' else 'import_only') for key,value in CHECKS.items()},
         'incomplete_declared_checks': [dict(id=c['id'],action=c['action'],state=c['state']) for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT,State.STALE}][:12],
         'eligible_followups': eligible_followups(snapshot)[:32],
+        'workflow_stage': 'proposal_only: propose an eligible action now; analyst execution approval comes afterward',
         'policy_semantics': 'Paths are subtree boundaries. / includes all paths except explicit exclusions. Candidate allowed verdicts come from backend validation; approval is separate.',
         'request': snapshot['request'],
         'scope': snapshot['scope'],

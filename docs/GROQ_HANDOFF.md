@@ -29,3 +29,11 @@ Official references inspected November 3, 2026:
 - https://console.groq.com/docs/openai
 - https://console.groq.com/docs/structured-outputs
 - https://console.groq.com/docs/model/openai/gpt-oss-120b
+
+## Observed first hosted run and proposal-stage clarification
+
+User-reported run at 5c4f519 returned HTTP 200 in 1321.25 ms, 3.53 seconds overall, but checks=[] because the model incorrectly required execution approval before proposing /admin. The unchanged experiment failed; no follow-up or fallback ran. Notes: local/groq-check at 8563c94. The private bundle remains on the user's machine.
+
+The follow-up fix explicitly labels the stage proposal_only and each eligible action proposal_allowed_now. Execution approval is still required afterward. The prompt explains that missing execution approval alone is not a reason to abstain. We retain legitimate abstention rather than forcing a nonempty answer. Alternative: fabricate an approval before planning; rejected because that reverses the analyst workflow. Drawback: clearer instructions still cannot guarantee useful reasoning.
+
+For the next single live test use branch fix/proposal-approval-stages, not the previous Groq branch. Keep all assertions, diagnostics and privacy instructions above. No live success is claimed by the prompt regression test.
