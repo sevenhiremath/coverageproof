@@ -1,3 +1,7 @@
+# Current delivery reference — November 4, 2026
+
+See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for the latest priorities and checkpoint evidence. The November 2 status below is historical and must not be used as the current model or scanner result.
+
 # Current project status — November 2, 2026
 
 ## What works and was checked
