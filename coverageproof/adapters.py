@@ -74,6 +74,7 @@ def nikto(data):
             if urlsplit_origin(url) != urlsplit_origin(base):
                 raise ValueError('Nikto location differs from exported host')
             rows.append(Receipt(target=url, check='web-server', outcome=State.FINDING,
+                http_method=v.get('method'),
                 issue_class=f'nikto:{v["id"]}', title=str(v['msg']), detail=str(v['msg']),
                 source_ref=f'/{hi}/vulnerabilities/{vi}', observed_at=host['end_time']))
     return rows

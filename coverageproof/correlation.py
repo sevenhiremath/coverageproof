@@ -11,9 +11,10 @@ def issue_identity(receipt):
     # Derive grouping from the exact preserved message as well as its source ID.
     # Apply at read time so previously imported artifacts need no rewriting.
     if receipt.issue_class and receipt.issue_class.startswith('nikto:'):
-        message_hash = sha256(receipt.detail.encode('utf-8')).hexdigest()
+        import json
+        message_hash = sha256(json.dumps([receipt.http_method, receipt.detail], ensure_ascii=False).encode('utf-8')).hexdigest()
         return (f'{receipt.issue_class}:message:{message_hash}',
-                'Same Nikto source ID and exact message on the same endpoint; plugin ID alone does not identify a condition. No cross-tool mapping or exploitability inference.')
+                'Same Nikto source ID, recorded method and exact message on the same endpoint; missing methods remain unknown. Plugin ID alone does not identify a condition. No cross-tool mapping or exploitability inference.')
     # ZAP's documented passive rule 10021 checks this exact header condition.
     # Only GET without a parameter maps onto the registered HTTP GET check.
     if receipt.issue_class == 'zap:10021:GET:':
@@ -57,7 +58,7 @@ def correlate(rows):
             continue
         f=cases[key]
         f['evidence'].append({'observation':row['id'],'artifact':row['artifact'],'source_ref':r.source_ref})
-        f['source_observations'].append({'id':row['id'],'tool':row['tool'],'source_issue_class':r.issue_class,'outcome':str(r.outcome),'severity':r.severity,'confidence':r.confidence,'observed_at':r.observed_at,'detail':r.detail,'source_ref':r.source_ref})
+        f['source_observations'].append({'id':row['id'],'tool':row['tool'],'source_issue_class':r.issue_class,'outcome':str(r.outcome),'severity':r.severity,'confidence':r.confidence,'observed_at':r.observed_at,'detail':r.detail,'source_ref':r.source_ref,'http_method':r.http_method})
         for field,value in [('source_tools',row['tool']),('source_issue_classes',r.issue_class or r.check),('correlation_reasons',reason),('source_severities',r.severity),('source_confidences',r.confidence)]:
             if value not in f[field]:f[field].append(value)
         if r.outcome==State.FINDING and SEVERITY_ORDER.get(r.severity,5)<SEVERITY_ORDER[f['severity']]:
