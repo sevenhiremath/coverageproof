@@ -7,6 +7,13 @@ NOSNIFF = 'header:x-content-type-options'
 
 
 def issue_identity(receipt):
+    # Nikto plugin IDs can cover several unrelated conditions (e.g. 013587).
+    # Derive grouping from the exact preserved message as well as its source ID.
+    # Apply at read time so previously imported artifacts need no rewriting.
+    if receipt.issue_class and receipt.issue_class.startswith('nikto:'):
+        message_hash = sha256(receipt.detail.encode('utf-8')).hexdigest()
+        return (f'{receipt.issue_class}:message:{message_hash}',
+                'Same Nikto source ID and exact message on the same endpoint; plugin ID alone does not identify a condition. No cross-tool mapping or exploitability inference.')
     # ZAP's documented passive rule 10021 checks this exact header condition.
     # Only GET without a parameter maps onto the registered HTTP GET check.
     if receipt.issue_class == 'zap:10021:GET:':
