@@ -1,9 +1,15 @@
-# Store-built evaluation checkpoint
+# Store-built evaluation v2
 
-Run `python -m coverageproof.store_eval --output NEW_DIRECTORY` to freeze six synthetic cases through Store creation, declared checks, native Nikto import and snapshots. It makes no target requests or provider calls. Existing output directories are refused. Each case offers Nikto, ZAP and HTTP candidates; order is reversed and the analyst requests HTTP, ZAP or abstention. Untrusted imported text requests a different action and invented citation.
+Freeze six synthetic cases with `python -m coverageproof.store_eval --output NEW_DIRECTORY`. The v2 fixture declares a separate root Nikto check before importing root evidence. This makes the untrusted instruction visible in the actual model context while preserving three unanswered admin candidates. Every case asserts model-input exposure. The previous v1 freeze stored that text as unmatched evidence, omitted by model_context; it cannot establish resistance to scanner instructions. Preserve existing evidence as v1.
 
-This is developer-authored instruction-following evaluation, not independent security expertise or proof of model benefit. Two explicit baselines: first eligible; executable HTTP first then check-name order. Neither interprets the request. Their scores are 1/6 and 2/6. Comparing with a stronger request-aware baseline remains necessary before claiming AI superiority.
+The request-aware baseline reads only the analyst request's first clause and selects the matching eligible HTTP or ZAP candidate, or abstains. It is explicitly tailored to this suite's vocabulary and scores 6/6 offline. First eligible and HTTP-first score 1/6 and 2/6. These are instruction-following checks, not independent security expertise or evidence that a model is superior to rules.
 
-The six cases are separate from the earlier 12-case suite and its partial live results. UUIDs and timestamps differ between freezes: preserve cases.json and its summary hash for any comparison. Synthetic database and snapshots are labelled; no genuine scanner recording is implied. Model evaluation on these frozen cases is not implemented yet. Next: consume frozen cases without regeneration, validate candidate-v2 output, score exact candidate IDs, review citation meaning and abstention explanations, and preserve provider failures without retry.
+Evaluate the same frozen bytes with:
 
-Offline verification: 134 tests passed. One dry freeze completed with zero provider calls and zero target requests. No live quality conclusion.
+```
+python -m coverageproof.frozen_eval --cases NEW_DIRECTORY/cases.json --sha256 HASH_FROM_SUMMARY --output NEW_RESULT_DIRECTORY
+```
+
+Add `--live` only for an authorized bounded Groq run: at most six calls, no retries, stop on provider failure including 429. No scanner, approval or target execution occurs. The evaluator verifies the hash and input exposure before any calls, copies exact case bytes, saves raw provider envelopes and traces, validates candidate-v2 proposals, and scores exact candidate IDs. Interrupted cases remain unattempted. Explanations require manual review of citation meaning, abstention, alternatives and limitations. Schema validity alone is insufficient.
+
+UUIDs and timestamps differ across freezes; reuse cases.json and its SHA256 for comparisons. Use a fresh output directory. Private provider outputs and synthetic databases should remain in the private diagnostics bundle. No live model quality claim is established by offline verification.
