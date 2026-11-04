@@ -47,7 +47,7 @@ def main():
                 if attempt==19:raise
                 time.sleep(.1)
         shell = (
-            '/opt/nikto/nikto.pl -h http://127.0.0.1:8765/ -Tuning 1 -maxtime 60 -timeout 3 -nointeractive -Format json -output /tmp/results.json'
+            '/opt/nikto/nikto.pl -h http://127.0.0.1:8765/ -Tuning 1 -maxtime 60 -timeout 3 -nointeractive -nocheck -ask no -Format json -output /tmp/results.json'
             if args.tool=='nikto' else
             'zap-baseline.py -t http://127.0.0.1:8765/ -m 1 -T 2 -J /tmp/results.json --autooff')
         command=['docker','run','--name',names[1],'--network','container:'+names[0],
@@ -67,9 +67,14 @@ def main():
                 raise RuntimeError('Tool stopped or exceeded fixed wall timeout')
             time.sleep(1)
         manifest['tool_inspect']=json.loads(checked(['docker','inspect',names[1]]))[0]
-        copied=subprocess.run(['docker','cp',names[1]+':/tmp/results.json',str(args.output/'results.json')],capture_output=True)
+        # Read mounted tmpfs through the running container, not Docker's archive API.
+        copied=subprocess.run(['docker','exec',names[1],'cat','/tmp/results.json'],capture_output=True,timeout=15)
         (args.output/'copy.stderr').write_bytes(copied.stderr)
-        if copied.returncode:raise RuntimeError('Raw export unavailable; preserve diagnostics and stop')
+        if copied.returncode:
+            listing=subprocess.run(['docker','exec',names[1],'ls','-la','/tmp'],capture_output=True,timeout=15)
+            (args.output/'scratch-listing.txt').write_bytes(listing.stdout+listing.stderr)
+            raise RuntimeError('Raw export unavailable; preserve diagnostics and stop')
+        (args.output/'results.json').write_bytes(copied.stdout)
         raw=(args.output/'results.json').read_bytes()
         manifest['sha256']=hashlib.sha256(raw).hexdigest()
         from coverageproof.adapters import parse
@@ -91,6 +96,10 @@ def main():
         assert not any(c['state']=='condition_not_observed' for c in snap['checks']), 'Alert exports must not prove negatives'
         assert manifest['exit_status'] in ({0} if args.tool=='nikto' else {0,1,2}), 'Tool error despite export'
         manifest['status']='import_verified'
+    except Exception as error:
+        manifest['status']='failed'
+        manifest['error_type']=type(error).__name__
+        raise
     finally:
         (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2))
         for name in reversed(names):
