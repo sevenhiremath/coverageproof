@@ -25,6 +25,24 @@ def test_known_cross_tool_condition_groups_without_losing_sources():
     assert cases[0]['issue_class']=='header:x-content-type-options'
 
 
+def test_nikto_shared_plugin_id_keeps_distinct_conditions_and_duplicate_sources():
+    headers=['content-security-policy','x-content-type-options','permissions-policy',
+             'referrer-policy','strict-transport-security']
+    rows=[]
+    for index, header in enumerate(headers):
+        item=row(str(index),'nikto:013587',tool='nikto',check='web-server')
+        item['receipt']=item['receipt'].model_copy(update={'detail':f'Suggested security header missing: {header}.'})
+        rows.append(item)
+    duplicate=row('duplicate','nikto:013587',tool='nikto',check='web-server')
+    duplicate['receipt']=duplicate['receipt'].model_copy(update={'detail':rows[0]['receipt'].detail})
+    cases=correlate(rows+[duplicate])
+    assert len(cases)==5
+    assert sum(len(c['evidence']) for c in cases)==6
+    assert len(next(c for c in cases if c['source_observations'][0]['id']=='0')['evidence'])==2
+    assert all(c['source_issue_classes']==['nikto:013587'] for c in cases)
+    assert {c['id'] for c in cases}=={c['id'] for c in correlate(list(reversed(rows+[duplicate])))}
+
+
 @pytest.mark.parametrize('target',['http://127.0.0.2:8765/admin','http://127.0.0.1:8766/admin','http://127.0.0.1:8765/other','http://127.0.0.1:8765/admin?role=other','https://127.0.0.1:8765/admin'])
 def test_different_assets_or_response_locations_stay_separate(target):
     assert len(correlate([row('a','zap:10021:GET:'),row('b','header:x-content-type-options',tool='http',target=target,check='header-nosniff')]))==2
