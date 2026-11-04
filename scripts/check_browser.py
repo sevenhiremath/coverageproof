@@ -102,7 +102,9 @@ def main():
             snap=state();root,admin=[c['id'] for c in snap['checks']]
             assert all(c['state']=='unattempted' for c in snap['checks'])
             execute(root)
-            expect(page.get_by_role('heading',name='1 unanswered declared check(s)',exact=True)).to_be_visible()
+            assessment_summary=page.get_by_role('region',name='What does this assessment establish?',exact=True)
+            expect(assessment_summary.get_by_text('1 unanswered checks',exact=True)).to_be_visible()
+            expect(assessment_summary.get_by_text('1 answered conditions',exact=True)).to_be_visible()
             snap=state()
             assert len(snap['findings'])==1 and snap['checks'][1]['state']=='unattempted'
             summary['before_followup_states']=[c['state'] for c in snap['checks']]
@@ -114,7 +116,9 @@ def main():
             assert decision['mode']=='development' and decision['checks'][0]['action']==snap['checks'][1]['action']
             assert decision['checks'][0]['evidence_ids']
             execute(admin)
-            expect(page.get_by_role('heading',name='0 unanswered declared check(s)',exact=True)).to_be_visible()
+            expect(assessment_summary.get_by_text('0 unanswered checks',exact=True)).to_be_visible()
+            expect(assessment_summary.get_by_text('2 answered conditions',exact=True)).to_be_visible()
+            expect(assessment_summary.get_by_text('Every declared check has an interpretable result or an applicability review. This does not establish that the system is secure.',exact=True)).to_be_visible()
             snap=state()
             assert len(snap['findings'])==1 and snap['checks'][1]['state']=='condition_not_observed'
             assert all(a['consumed'] for a in snap['approvals'])
