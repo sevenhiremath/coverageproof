@@ -72,14 +72,15 @@ def render(snapshot):
             p('Applicability review: ' + json.dumps(c['applicability']))
         for a in c['attempts']:
             p(f'Execution {a["id"]}: {a["status"]}; {a["created"]}; {a["detail"]}')
-    p('Proposal action facts', 'Heading1')
+    proposals=[p for e in snapshot['events'] if e['kind']=='planning_decision' for p in e['payload'].get('checks',[])]
+    if proposals:p('Proposal action facts', 'Heading1')
     for event in snapshot['events']:
         if event['kind']=='planning_decision':
             for proposed in event['payload'].get('checks',[]):
                 facts=action_facts(proposed['action'],snapshot['scope'])
                 p(proposed['action']['check']+' | '+proposed['action']['target'],'Heading2')
                 for value in facts.values():p(value)
-    p('Scope verdicts above use the scope at report generation. Historical proposal text remains in the audit record.')
+    if proposals:p('Scope verdicts above use the scope at report generation. Historical proposal text remains in the stored audit record.')
     p('Finding review summary', 'Heading1')
     p(json.dumps(dict(Counter(f['status'] for f in snapshot['findings']))))
     p('All candidates, including false-positive decisions, remain below for traceability. An accepted-for-report decision is analyst judgment, not proof of exploitation. New evidence makes earlier reviews outdated.')
@@ -90,7 +91,7 @@ def render(snapshot):
         p('These observations do not count as completed declared checks until the analyst reviews and adds them to the plan.')
     p('Severity distribution and prioritization', 'Heading1')
     p(json.dumps(dict(Counter(f['severity'] for f in snapshot['findings'] if f['status'] != 'false_positive'))))
-    p('Ranking uses the highest supplied source severity, then attributed exposure, asset impact and analyst validation. Asset and finding identifier break ties. Missing inputs stay unknown. No numerical confidence, CVSS or combined risk score is invented. False-positive candidates are excluded from the active severity distribution but retained in the evidence record.')
+    p('Source severity first: ranking uses the highest supplied source severity, then attributed exposure, asset impact and analyst validation. Asset and finding identifier break ties. Missing inputs stay unknown. No numerical confidence, CVSS or combined risk score is invented. False-positive candidates are excluded from the active severity distribution but retained in the evidence record.')
     p('Risk context is attributed analyst judgment. Source confidence is retained without averaging; source severity can still be a false positive.')
     p('Detailed vulnerability findings, impact and remediation', 'Heading1')
     if not snapshot['findings']:
@@ -136,9 +137,12 @@ def render(snapshot):
     p(f'Assessment created {snapshot["created"]}; report snapshot {snapshot["generated"]}. Model reasoning and reviewer sign-off status must be verified before client delivery.')
     for a in snapshot['approvals']:
         p(json.dumps(a))
+    p('Audit index: full event payloads remain in the stored report snapshot. Payload SHA256 uses UTF-8 JSON with sorted keys and compact separators. This index avoids repeating long model replies.')
     for e in snapshot['events']:
         if e['kind'] in {'action_denied','execution_denied','planning_decision','planning_failed','execution_finished','execution_recovered','finding_reviewed','imported_observation_adopted','risk_context_recorded','applicability_reviewed','model_call_recorded'}:
-            p(f'{e["created"]} {e["kind"]}: {json.dumps(e["payload"])}')
+            payload=json.dumps(e['payload'],sort_keys=True,separators=(',',':')).encode('utf-8')
+            p(f'{e["created"]} | {e["kind"]} | event {e.get("id","unknown")}')
+            p('Payload SHA256: '+sha256(payload).hexdigest())
     def footer(canvas, doc):
         canvas.setFont('CoverageSans',8)
         canvas.setFillColor(colors.HexColor('#556171'))
