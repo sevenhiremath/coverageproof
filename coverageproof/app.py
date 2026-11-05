@@ -9,6 +9,7 @@ from .store import Store
 from .planner import plan
 from .runner import execute
 from .report import generate
+from .presentation import action_facts, applicability_note
 from .narrative import draft_report, review_draft
 
 
@@ -17,6 +18,7 @@ def create_app(db_path=None):
     store = Store(db_path or os.environ.get('COVERAGEPROOF_DB','data/coverageproof.sqlite'))
     app.state.store = store
     templates = Jinja2Templates(directory=str(Path(__file__).parent / 'templates'))
+    templates.env.globals.update(action_facts=action_facts, applicability_note=applicability_note)
 
     @app.middleware('http')
     async def local_boundary(request, call_next):

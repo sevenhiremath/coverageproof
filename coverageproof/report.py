@@ -16,6 +16,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, KeepTogether
 from .domain import now
 from .store import uid
+from .presentation import action_facts, applicability_note
 
 
 FONT_LOCK=Lock()
@@ -62,7 +63,8 @@ def render(snapshot):
         p('AI report explanations: no current analyst-accepted draft. The stored assessment state is reported below.')
     p('Assessment methodology and rules of engagement', 'Heading1')
     p('Coverage is limited to the explicitly declared checks. Literal-IP network boundaries and permitted ports are enforced. All runner actions need one-use approval. Redirects and environment proxies are disabled for the supported HTTP runner. Native findings-only exports cannot establish negative checks.')
-    p(json.dumps(snapshot['scope'], indent=2))
+    for key,value in snapshot['scope'].items():
+        p(f'{key.replace("_"," ")}: {value}')
     p('Tool execution and assets tested', 'Heading1')
     for c in snapshot['checks']:
         p(f'{c["id"]} | target {c["action"]["target"]} | port {c["action"]["port"] or "in URL"} | {c["condition"]} | {c["state"]}')
@@ -70,8 +72,14 @@ def render(snapshot):
             p('Applicability review: ' + json.dumps(c['applicability']))
         for a in c['attempts']:
             p(f'Execution {a["id"]}: {a["status"]}; {a["created"]}; {a["detail"]}')
-    for a in snapshot['artifacts']:
-        p(f'Artifact {a["id"]}: {a["tool"]}, source={a["mode"]}, ingested={a["created"]}, SHA256={a["sha256"]}')
+    p('Proposal action facts', 'Heading1')
+    for event in snapshot['events']:
+        if event['kind']=='planning_decision':
+            for proposed in event['payload'].get('checks',[]):
+                facts=action_facts(proposed['action'],snapshot['scope'])
+                p(proposed['action']['check']+' | '+proposed['action']['target'],'Heading2')
+                for value in facts.values():p(value)
+    p('Scope verdicts above use the scope at report generation. Historical proposal text remains in the audit record.')
     p('Finding review summary', 'Heading1')
     p(json.dumps(dict(Counter(f['status'] for f in snapshot['findings']))))
     p('All candidates, including false-positive decisions, remain below for traceability. An accepted-for-report decision is analyst judgment, not proof of exploitation. New evidence makes earlier reviews outdated.')
@@ -83,12 +91,16 @@ def render(snapshot):
     p('Severity distribution and prioritization', 'Heading1')
     p(json.dumps(dict(Counter(f['severity'] for f in snapshot['findings'] if f['status'] != 'false_positive'))))
     p('Ranking uses the highest supplied source severity, then attributed exposure, asset impact and analyst validation. Asset and finding identifier break ties. Missing inputs stay unknown. No numerical confidence, CVSS or combined risk score is invented. False-positive candidates are excluded from the active severity distribution but retained in the evidence record.')
+    p('Risk context is attributed analyst judgment. Source confidence is retained without averaging; source severity can still be a false positive.')
     p('Detailed vulnerability findings, impact and remediation', 'Heading1')
     if not snapshot['findings']:
         p('No issue candidates recorded. This is not evidence that unattempted or inconclusive checks found no issues.')
     for f in snapshot['findings']:
+        finding_start=len(story)
+        if f is snapshot['findings'][0]:finding_start-=1
         p(f'{f["id"]} | {f["title"]}', 'Heading2')
-        for key in ('asset','issue_class','severity','cvss','confidence','status','impact','remediation'):
+        if applicability_note(f):p(applicability_note(f))
+        for key in ('asset','severity','cvss','confidence','status','impact','remediation'):
             p(f'{key}: {f[key]}')
         if f.get('validation_status'):
             p(f'Evidence status: {f["validation_status"]}; freshness: {f.get("freshness_status", "unknown")}; source tools: {", ".join(f["source_tools"])}')
@@ -96,21 +108,29 @@ def render(snapshot):
             if f['severity_disagreement']:
                 p(f'Source severity disagreement: {f["source_severities"]}. The highest supplied severity is displayed, not an independently calculated score.')
             for source in f['source_observations']:
-                p(f'{source["tool"]} | {source["outcome"]} | {source["observed_at"]} | observation {source["id"]}: {source["detail"]}')
-            p(json.dumps(f['risk_explanation']))
+                p(f'{source["tool"]} | method {source.get("http_method") or "unknown"} | {source["outcome"]} | {source["observed_at"]} | observation {source["id"]}: {source["detail"]}')
+            risk=f['risk_explanation']
+            for key in ('severity_reason','exposure','asset_impact','exploitability'):
+                p(f'{key.replace("_"," ")}: {risk[key]}')
             if f.get('risk_context'):
                 p(f'Risk context by {f["risk_context"]["actor"]} at {f["risk_context"]["created"]}: {f["risk_context"]["note"]}')
         if f.get('review'):
             p(f'Last review by {f["review"]["actor"]} at {f["review"]["created"]}: {f["review"]["note"]}')
         p('CVE/CWE: not independently established. References: native artifact and source pointers below.')
         for e in f['evidence']:
-            p(json.dumps(e))
+            p(f'Observation {e["observation"]} | artifact {e["artifact"]} | source pointer {e["source_ref"]}')
+        finding_flowables=story[finding_start:]
+        story[finding_start:]=[KeepTogether(finding_flowables)]
     p('Evidence and coverage limitations', 'Heading1')
     for c in snapshot['checks']:
         p(f'{c["action"]["target"]} | {c["state"]}', 'Heading2')
         for o in c['observations']:
             p(f'Collection freshness: {o.get("freshness", {}).get("state", "unknown")}')
             p(f'{o["id"]} / {o["artifact"]} {o["receipt"]["source_ref"]}: {o["receipt"]["detail"]}; observed={o["receipt"]["observed_at"]}')
+    p('Evidence manifest', 'Heading1')
+    for a in snapshot['artifacts']:
+        p(f'Artifact {a["id"]}: {a["tool"]}, source={a["mode"]}, ingested={a["created"]}')
+        p('SHA256: '+a['sha256'])
     p('Assumptions, failures, approvals and timestamps', 'Heading1')
     p('Analyst-supplied imports are not live executions or authenticated attestations. Schema-valid input alone does not establish origin. Scope revisions make earlier plans stale. Import timestamps are preserved, but timestamps outside the scope-defined evidence window are marked stale, and unknown or future timestamps remain explicit limitations. Organizer evaluation authorization must be supplied separately from the self-owned development scope.')
     p(f'Assessment created {snapshot["created"]}; report snapshot {snapshot["generated"]}. Model reasoning and reviewer sign-off status must be verified before client delivery.')
