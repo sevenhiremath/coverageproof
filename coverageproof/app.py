@@ -13,7 +13,7 @@ from .presentation import action_facts, applicability_note
 from .narrative import draft_report, review_draft
 
 
-def create_app(db_path=None):
+def create_app(db_path=None, *, hosted_hostname=None):
     app = FastAPI(title='CoverageProof')
     store = Store(db_path or os.environ.get('COVERAGEPROOF_DB','data/coverageproof.sqlite'))
     app.state.store = store
@@ -24,7 +24,7 @@ def create_app(db_path=None):
     async def local_boundary(request, call_next):
         # Loopback product only. Host allowlist prevents DNS-rebinding access to local service.
         host = request.headers.get('host','').split(':')[0]
-        if host not in {'127.0.0.1','localhost','testserver'}:
+        if host not in {'127.0.0.1','localhost','testserver',hosted_hostname}:
             return Response('Local single-analyst service only', status_code=403)
         if request.method == 'POST':
             origin = request.headers.get('origin')
@@ -56,6 +56,8 @@ def create_app(db_path=None):
     @app.post('/assessments')
     def create(request_text: str=Form(),scope_json: str=Form()):
         scope = Scope.model_validate_json(scope_json)
+        if hosted_hostname and (scope.networks != ('127.0.0.1/32',) or scope.ports != (8765,)):
+            raise ValueError('Hosted demo assessments use only the owned 127.0.0.1:8765 fixture')
         id = store.create(request_text,scope)
         return RedirectResponse(f'/assessments/{id}',303)
 
