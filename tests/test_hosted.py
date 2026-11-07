@@ -55,3 +55,23 @@ def test_expired_session_cannot_access_workspace(tmp_path, monkeypatch):
     now = time.time()
     monkeypatch.setattr('coverageproof.hosted.time.time', lambda: now + 8 * 60 * 60 + 1)
     assert client.get('/', follow_redirects=False).status_code == 303
+
+
+def test_guided_demo_starts_a_fresh_assessment_without_running_checks(tmp_path, monkeypatch):
+    monkeypatch.setenv('COVERAGEPROOF_DEMO_PASSWORD', 'synthetic-test-password-only')
+    monkeypatch.setenv('RENDER_EXTERNAL_HOSTNAME', 'demo.example.com')
+    client = TestClient(create_hosted_app(tmp_path/'demo.sqlite'), base_url='https://demo.example.com')
+    assert client.post('/demo/start').status_code == 401
+    auth = ('demo', 'synthetic-test-password-only')
+    assert client.post('/demo/start', auth=auth, headers={'Origin': 'https://other.example'}).status_code == 403
+    first = client.post('/demo/start', auth=auth)
+    assert first.status_code == 200
+    assert 'Guided walkthrough' in first.text
+    snapshot = client.get('/api' + first.url.path, auth=auth).json()
+    assert {c['action']['target']: c['state'] for c in snapshot['checks']} == {
+        'http://127.0.0.1:8765/': 'unattempted',
+        'http://127.0.0.1:8765/admin': 'unattempted',
+    }
+    assert not snapshot['approvals'] and not snapshot['artifacts']
+    second = client.post('/demo/start', auth=auth)
+    assert second.url.path != first.url.path

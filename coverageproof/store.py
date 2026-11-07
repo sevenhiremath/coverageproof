@@ -73,14 +73,24 @@ class Store:
                 'output_sha256':metadata.get('output_sha256'),'validation_errors':metadata.get('validation_errors',[])})
         return call
 
-    def create(self, request, scope):
+    def create(self, request, scope, *, initial_checks=()):
         if not request.strip() or len(request) > 4000:
             raise ValueError('Assessment request must have 1-4000 characters')
         id = uid()
         with self.tx() as db:
             db.execute('INSERT INTO assessments VALUES(?,?,?,?)', (id, request, scope.model_dump_json(), now()))
             self.event(db, id, 'assessment_created', {'environment': scope.environment})
+            for action in initial_checks:
+                validate_scope(scope, action)
+                self._insert_check(db, id, action)
         return id
+
+    def _insert_check(self, db, assessment, action):
+        check_id = uid()
+        db.execute('INSERT INTO checks VALUES(?,?,?,?)',
+                   (check_id, assessment, action.model_dump_json(), now()))
+        self.event(db, assessment, 'check_planned', {'check_id': check_id, 'action': action.model_dump()})
+        return check_id
 
     def context(self, db, assessment):
         row = db.execute('SELECT * FROM assessments WHERE id=?', (assessment,)).fetchone()
@@ -101,10 +111,7 @@ class Store:
                 duplicate = db.execute('SELECT id FROM checks WHERE assessment=? AND action=?', (assessment, action.model_dump_json())).fetchone()
                 if duplicate:
                     return duplicate['id']
-                id = uid()
-                db.execute('INSERT INTO checks VALUES(?,?,?,?)', (id, assessment, action.model_dump_json(), now()))
-                self.event(db, assessment, 'check_planned', {'check_id': id, 'action': action.model_dump()})
-                return id
+                return self._insert_check(db, assessment, action)
         raise ValueError(error)
 
     def check_context(self, db, check_id):
