@@ -79,6 +79,13 @@ The demo branch also supports Groq planning. Set `COVERAGEPROOF_PROVIDER=groq`, 
 
 The submitted recording uses development planning. Groq was evaluated separately. Provider failures and rate limits remain limitations.
 
+## Sample report and supporting details
+
+- [Sample VAPT report](samples/current-owned-http/sample-vapt.pdf), recorded on November 2 with an owned HTTP fixture and development planning. This is separate from the November 9 video assessment.
+- [Sample evidence and recording context](samples/current-owned-http/README.md)
+- [Integration status](docs/INTEGRATIONS.md)
+- [Current project status](docs/STATUS.md)
+
 ## Application stack
 
 Python, FastAPI, Jinja2, HTML/CSS, SQLite, Groq and ReportLab.
@@ -96,3 +103,7 @@ Python, FastAPI, Jinja2, HTML/CSS, SQLite, Groq and ReportLab.
 [Dependency acknowledgments](THIRD_PARTY.md)
 
 Built by Swayam Hiremath for DataOps Innovation Hackathon 2026, PS-1. AI-assisted implementation.
+
+Latest November 9 assessment PDF: samples/current-owned-http/assessment-nov9.pdf
+
+[November 9 assessment report](samples/current-owned-http/assessment-nov9.pdf)
