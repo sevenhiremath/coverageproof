@@ -103,3 +103,7 @@ Python, FastAPI, Jinja2, HTML/CSS, SQLite, Groq and ReportLab.
 [Dependency acknowledgments](THIRD_PARTY.md)
 
 Built by Swayam Hiremath for DataOps Innovation Hackathon 2026, PS-1. AI-assisted implementation.
+
+Latest November 9 assessment PDF: samples/current-owned-http/assessment-nov9.pdf
+
+[November 9 assessment report](samples/current-owned-http/assessment-nov9.pdf)
