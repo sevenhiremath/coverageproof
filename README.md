@@ -1,99 +1,98 @@
 # CoverageProof
 
-What did we assess, what remains unknown, and what should we investigate next?
+A security assessment report that shows findings and unfinished checks.
 
-CoverageProof is a PS-1 assessment workspace for the DataOps Innovation Hackathon 2026. Coverage means evidence for explicitly declared checks, never completeness against all vulnerabilities.
+## The problem
 
-## Run
+An analyst may have several scanner reports and still not know what was actually checked. A missing result could mean a check found nothing, failed or never ran. Combining findings alone leaves that question unanswered.
 
-Python 3.11+:
+CoverageProof tracks each declared check alongside its evidence and execution status. The analyst can see which checks still need work before handing over the report.
+
+## Example
+
+The home page has a missing security header. The same header check on the admin page has not run.
+
+CoverageProof shows one finding candidate and an unattempted admin check. After the analyst approves the exact HTTP action, the app records the admin response. If it contains the expected header, that condition becomes `condition_not_observed`. The finding count stays one, but the unanswered check is now resolved.
+
+This result applies to the recorded response and condition. It does not establish that the whole page or application is secure.
+
+## Application workflow
+
+1. Enter the assessment request and authorized scope.
+2. Declare checks and import supported scanner results.
+3. Inspect finding candidates, their evidence and unfinished checks.
+4. Review the proposed follow-up and approve a supported action.
+5. Download the assessment PDF with findings, remediation and limitations.
+
+Findings retain source references and raw artifact hashes. Analysts can review candidates as accepted for report, false positive or needing review. New evidence invalidates earlier review decisions.
+
+## Scanner support
+
+| Input or action | What the application does |
+| --- | --- |
+| Nmap XML | Imports native discovery results |
+| Nikto JSON | Imports native web findings |
+| OWASP ZAP traditional JSON | Imports native web alerts |
+| HTTP header check | Executes one bounded GET after exact approval |
+| Nessus, OpenVAS / Greenbone, Burp Suite, Metasploit | No working adapter |
+
+**The website does not launch Nmap, Nikto or ZAP.** Their outputs come from separately run scanners. An import preserves the source observations; missing alerts do not prove that a check completed without a finding.
+
+## Run the current demo application
+
+The hosted application uses the `deploy/render-demo` branch. Python 3.11 or later is required.
 
 ```bash
+git clone --branch deploy/render-demo https://github.com/sevenhiremath/coverageproof.git
+cd coverageproof
 python -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[test]'
-python -m pytest -q
+```
+
+Activate the environment on Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or on macOS / Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the application and start it:
+
+```bash
+python -m pip install -e .
 python -m uvicorn coverageproof.app:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. Windows: activate with `.venv\Scripts\Activate.ps1`. Configuration is documented in `.env.example`; export environment variables explicitly (no automatic dotenv loading). Database defaults to `data/coverageproof.sqlite` and persists across restarts. Keep it private; it contains raw assessment evidence.
+Open http://127.0.0.1:8000.
 
-1. Create a request with an explicitly authorized literal-IP network scope and allowed ports.
-2. Generate a plan (explicitly labeled deterministic development mode unless the Ollama or API provider is configured).
-3. Inspect a declared check, approve the exact HTTP action, then execute it against your own fixture.
-4. Import native scanner outputs for already-declared exact targets; imports remain labeled imports.
-5. Inspect observations and gaps. Download the assessment PDF.
+These commands install application dependencies only. Configure environment variables before starting the app; settings are listed in [.env.example](https://github.com/sevenhiremath/coverageproof/blob/deploy/render-demo/.env.example). The default local database is `data/coverageproof.sqlite`.
 
-## Checkpoint status
+## Planning
 
-Working: durable declared-check workflow, exact-action one-use approvals, network/port/exclusion policy, Nmap/Nikto/ZAP native parsers, evidence hashes and pointers, coverage states, bounded HTTP runner, provider contract, development planner, findings candidates, downloadable report snapshots, Jinja interface and automated tests.
+Development mode uses explicitly labeled rules. It does not call an AI model.
 
-Not submission ready: genuine three-scanner lab output verification, organizer lab access, live AI evaluation, broader cross-tool issue mappings and native isolated scanner runner. No deterministic response is represented as live AI reasoning. Read [status](docs/STATUS.md) before making capability claims.
+The demo branch also supports Groq planning. Set `COVERAGEPROOF_PROVIDER=groq`, `GROQ_MODEL=openai/gpt-oss-120b` and your private `GROQ_API_KEY` before starting the application. The backend validates proposed checks and evidence references. An AI proposal is not permission to execute an action.
 
-## Evidence experiment
+The submitted recording uses development planning. Groq was evaluated separately. Provider failures and rate limits remain limitations.
 
-```bash
-python scripts/experiment.py
-```
+## Application stack
 
-Uses a real self-owned HTTP fixture. Generates evidence and a PDF in `output/`. This validates the workflow contribution with a real bounded HTTP check; it does **not** replace the required genuine three-tool demonstration. Unit-test scanner strings are synthetic schema fixtures, never demo scanner results.
+Python, FastAPI, Jinja2, HTML/CSS, SQLite, Groq and ReportLab.
 
-## Documentation
+## Current boundaries
 
-- [Requirements and exact document sections](docs/REQUIREMENTS.md)
-- [All-seven integration matrix](docs/INTEGRATIONS.md)
-- [Architecture and boundaries](docs/ARCHITECTURE.md)
-- [Why we chose these approaches](docs/DECISIONS.md)
-- [How grouping and risk priority work](docs/CORRELATION_AND_RISK.md)
-- [Useful ideas from winning projects](docs/WINNER_REFERENCES.md)
-- [Local model and browser handoff](docs/LOCAL_HANDOFF.md)
-- [Exact web checks awaiting approval](docs/WEB_CHECK_PLAN.md)
-- [Demo and presentation outline](docs/DEMO.md)
-- [Syncing online and local work](docs/SYNC.md)
-- [Status / handoff](docs/STATUS.md)
-- [Local model failure and fix](docs/MODEL_OUTPUTS.md)
-- [Exact model retry task](docs/MODEL_RETRY.md)
-- [Submission readiness](docs/SUBMISSION.md)
-- [Dependency licenses and references](THIRD_PARTY.md)
+- Live execution supports the bounded HTTP check.
+- Coverage refers to declared checks, not all possible vulnerabilities.
+- Impact and exploitability may remain unknown. Findings require analyst review.
+- The hosted demo uses temporary storage.
+- Testing must remain inside an explicitly authorized scope. Organizer evaluation authorization is separate from the owned development fixture.
 
-AI-assisted implementation. No upstream application code has been copied into this checkpoint. Third-party dependencies and format documentation remain their authors' work.
+[Hosted demo](https://coverageproof-demo.onrender.com/)  
+[Application source](https://github.com/sevenhiremath/coverageproof/tree/deploy/render-demo)  
+[Dependency acknowledgments](THIRD_PARTY.md)
 
-## Local AI without a paid API
-
-The app now supports the model already installed in Ollama. Set these environment variables before starting the app on that same machine:
-
-```text
-COVERAGEPROOF_PROVIDER=ollama
-OLLAMA_MODEL=qwen3.5:9b
-```
-
-The provider calls `http://127.0.0.1:11434/api/chat`, requests JSON matching the plan schema, and applies the same evidence/scope checks. It does not download models or use subscription credentials. Keep default development mode if Ollama is unavailable. Failures are recorded and do not silently become development answers. Actual local-model quality/speed remains unverified; automated provider tests use synthetic mocked responses.
-
-## Finding review
-
-Inspect a candidate's source evidence, enter a review reason and choose accepted for report, false positive or needs review. New evidence invalidates the earlier review. False positives remain available for traceability. Imported observations without matching declared checks are displayed separately and can be added to the plan after inspection.
-
-The current app also groups the documented ZAP nosniff rule with the corresponding HTTP check at an exact URL, preserves contradictions/source severity differences, and lets analysts record risk context with reasons and evidence references. The rules are intentionally limited; see the grouping and risk document for alternatives and drawbacks.
-
-## Reproduce the isolated backend checks
-
-```bash
-docker build -f Dockerfile.tests -t coverageproof-tests .
-docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --memory 1g --cpus 2 --pids-limit 128 coverageproof-tests
-```
-
-Image build downloads dependencies. Test runtime has no external network; owned loopback fixtures still work. This job does not run native scanners or Ollama. See GitHub Actions for the actual container result.
-
-## AI report explanations
-
-With the Ollama provider configured, draft a short executive explanation and limitations from stored checks. Each statement must cite real checks and their observations. The draft needs analyst acceptance before it enters the PDF. Changed assessment state invalidates the draft. Citation checks cannot prove the prose is true: inspect its meaning before accepting it. This feature is mock-tested; actual local model output remains to be validated.
-
-The first genuine native Nmap recording is in [samples/recorded-nmap](samples/recorded-nmap). It was collected in an isolated owned GitHub fixture and imported successfully; one open port produced an inventory observation and zero vulnerability candidates. Nikto/ZAP still need genuine verification.
-
-## Recorded browser workflow
-
-![Owned browser test showing an unanswered declared check](samples/browser-check/before-followup.png)
-
-[Before/after captures and test summary](samples/browser-check/README.md). Real Chromium and owned HTTP receipts; development planning and a synthetic report-review provider are explicitly labeled. This does not replace the pending real-model demonstration.
-
-If a crash leaves a check marked running, follow [interrupted-check recovery](docs/RECOVERY.md). Stop all workers first. Recovery keeps the failed state and consumed approval; it never retries an action automatically.
+Built by Swayam Hiremath for DataOps Innovation Hackathon 2026, PS-1. AI-assisted implementation.
