@@ -1,0 +1,58 @@
+# First live Groq check
+
+Use branch feature/groq-provider in a fresh worktree, preserving older work. Use the existing Python environment with this worktree on PYTHONPATH. The key must already be in the process environment; never print it, paste it into chat or commit it.
+
+PowerShell, from the new worktree (replace the Python path with the existing environment):
+
+```powershell
+$env:COVERAGEPROOF_PROVIDER='groq'
+$env:GROQ_MODEL='openai/gpt-oss-120b'
+$env:PYTHONPATH='.'
+python scripts/experiment.py
+```
+
+Run once against the script's own benign HTTP fixture. This sends the assessment request, scope, candidate actions and observation excerpts to Groq. Use only this non-sensitive fixture. No Ollama, model downloads or scanners are required. Do not substitute development mode, change assertions or repeat failed calls automatically.
+
+Return source commit, selected action, overall elapsed time and saved provider elapsed_ms. Preserve output/experiment-summary.json, database, HTTP receipts, PDF and model-diagnostics privately. Commit only non-sensitive result notes on a new local branch. If HTTP 401, 429 or a model/schema error occurs, report its status without key or provider body. The online tests are mocked; no live success has been established yet.
+
+Expected result: actual model mode; /admin changes from unattempted to condition_not_observed after its exact approved follow-up; issue count stays one. A failed or empty proposal is retained without a substituted action.
+
+## Choice and limitations
+
+Groq uses its documented OpenAI-compatible chat endpoint and best-effort JSON schema mode. This fits the existing Pydantic schema without changing optional fields. Strict schema mode is an alternative requiring schema conversion; regardless of mode, valid JSON cannot establish good reasoning. Backend scope, eligible-action and citation checks remain required.
+
+The default model is openai/gpt-oss-120b, configurable with GROQ_MODEL. Actual account availability, quota, quality and latency need this live test. One bounded request, 2048 completion tokens, 60-second HTTP timeout, 256-KiB response bound, no redirects/environment proxy and no automatic retry limit failure amplification. The timeout is an HTTP timeout, not a guaranteed process wall-clock deadline. Credentials and error bodies are excluded from saved diagnostics. Only message content is saved privately, not reasoning fields.
+
+Planning and analyst-reviewed report drafting support Groq. Reports retain actual provider labels. The benefit is hosted inference without local model tuning. The drawbacks are network/account dependency and sending context to an external service. Ollama remains optional; neither provider silently replaces a failed call.
+
+Official references inspected November 3, 2026:
+- https://console.groq.com/docs/openai
+- https://console.groq.com/docs/structured-outputs
+- https://console.groq.com/docs/model/openai/gpt-oss-120b
+
+## Observed first hosted run and proposal-stage clarification
+
+User-reported run at 5c4f519 returned HTTP 200 in 1321.25 ms, 3.53 seconds overall, but checks=[] because the model incorrectly required execution approval before proposing /admin. The unchanged experiment failed; no follow-up or fallback ran. Notes: local/groq-check at 8563c94. The private bundle remains on the user's machine.
+
+The follow-up fix explicitly labels the stage proposal_only and each eligible action proposal_allowed_now. Execution approval is still required afterward. The prompt explains that missing execution approval alone is not a reason to abstain. We retain legitimate abstention rather than forcing a nonempty answer. Alternative: fabricate an approval before planning; rejected because that reverses the analyst workflow. Drawback: clearer instructions still cannot guarantee useful reasoning.
+
+For the next single live test use branch fix/proposal-approval-stages, not the previous Groq branch. Keep all assertions, diagnostics and privacy instructions above. No live success is claimed by the prompt regression test.
+
+
+## Citation contract follow-up
+The user-reported run on 972e6e9 selected the correct /admin action but returned
+empty evidence_ids. Validation rejected it in 4.89 seconds overall (2497.87 ms
+provider). No follow-up ran. Private evidence and notes at 889130a remain the
+record of that failed run.
+
+The model schema now requires at least one citation when stored observations
+exist, matching the unchanged backend validator. Context states that requirement
+explicitly. Prior route observations may motivate investigation, but cannot prove
+a finding on an unattempted route. Initial plans without observations still allow
+empty citations; abstention remains valid. No citations are inserted by the backend.
+Best-effort structured output can still fail, so this is not a live success claim.
+
+Run the existing owned experiment once on this branch using the existing private
+key and Python environment. Preserve both previous failures. Keep assertions
+unchanged and report the actual decision, citations, timings and diagnostics.
+Do not retry automatically, start Ollama or substitute another provider.

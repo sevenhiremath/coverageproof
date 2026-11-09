@@ -1,3 +1,25 @@
+# Submission checklist — 9 November 2026
+
+The organizer's updated announcement supplied by the participant sets the deadline to 9 November 2026 at 11:59 PM IST.
+
+The submission form has three required fields:
+
+- Presentation Google Drive Link, with anyone-with-link viewing enabled.
+- Project Demo Video URL, also a Google Drive link with viewing enabled.
+- GitHub Repository URL containing source code and setup instructions.
+
+Use https://github.com/sevenhiremath/coverageproof/tree/deploy/render-demo for the current application.
+
+The presentation follows the nine required sections. The recorded video demonstrates development-mode planning and the approved HTTP workflow. Separate Groq experiments and scanner imports must be described as separate evidence.
+
+PS-1 also asks for a sample VAPT report. The repository contains a [sample PDF](../samples/current-owned-http/sample-vapt.pdf) with its [recording context](../samples/current-owned-http/README.md). That sample is from November 2 and is separate from the November 9 video assessment.
+
+Final Drive URLs and final Unstop submission confirmation are not recorded here.
+
+## Earlier submission planning
+
+These notes retain the previous schedule and earlier pending tasks for historical context.
+
 # Submission readiness
 
 Official portal: https://unstop.com/hackathons/dataops-innovation-hackathon-hackthecore-1765313/amp

@@ -36,7 +36,7 @@ def execute(store, check_id, approval):
                     title='Missing or unexpected X-Content-Type-Options' if interpretable and not present else None,
                     severity='low' if interpretable and not present else 'unknown',
                     detail=f'GET {target}; HTTP {response.status_code}; nosniff={present}. Only this response and condition assessed; redirects not followed.',
-                    source_ref='HTTP response headers', observed_at=now(), confidence='direct response observation',
+                    source_ref='HTTP response headers', http_method='GET', observed_at=now(), confidence='direct response observation',
                     remediation='Set X-Content-Type-Options: nosniff on the affected response and verify content types.')
                 store.finish(attempt, 'completed', 'One response recorded; no broader security conclusion.', raw, receipt)
     except httpx.TimeoutException:

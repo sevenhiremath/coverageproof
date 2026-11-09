@@ -6,17 +6,20 @@ from hashlib import sha256
 from typing import Literal
 import httpx
 from pydantic import Field, ValidationError
-from .domain import Action, CHECKS, Scope, Strict, State, now, validate_scope
+from .domain import Action, CHECKS, Scope, Strict, State, now, validate_scope, canonical_target
 from .model_diagnostics import record_call, public_validation_failure
+from .groq_provider import GroqProvider
 
 
 class Alternative(Strict):
     tool: Literal['nmap', 'nikto', 'zap', 'http', 'no_action']
-    reason_not_chosen: str = Field(min_length=12, max_length=1000)
+    reason_not_chosen: str = Field(min_length=12, max_length=1000, description='Explain why this exact alternative was rejected. For no_action, explain why abstaining would leave a useful declared question unanswered; do not compare other tools or imply prior execution approval is required.')
 
 
 class ProposedCheck(Strict):
     action: Action
+    candidate_id: str | None = None
+    basis: list[dict] = Field(default_factory=list, max_length=20)
     rationale: str = Field(min_length=12, max_length=1500)
     evidence_ids: list[str] = Field(max_length=20)
     alternatives: list[Alternative] = Field(default_factory=list, max_length=5)
@@ -24,32 +27,81 @@ class ProposedCheck(Strict):
 
 
 class Proposal(Strict):
-    mode: Literal['development', 'model']
+    mode: Literal['development', 'model', 'backend']
+    contract_version: Literal['legacy-v1', 'candidate-v2'] = 'legacy-v1'
     explanation: str = Field(min_length=12, max_length=3000)
     checks: list[ProposedCheck] = Field(max_length=12)
 
 
-def model_plan_schema():
+def model_plan_schema(snapshot=None):
     schema=Proposal.model_json_schema()
     schema['properties']['mode']={'type':'string','const':'model'}
+    if snapshot and any(c['observations'] for c in snapshot['checks']):
+        schema['$defs']['ProposedCheck']['properties']['evidence_ids']['minItems'] = 1
     return schema
+
+
+def eligible_followups(snapshot):
+    """Backend policy facts for declared work, never model-granted permission."""
+    scope = Scope.model_validate(snapshot['scope'])
+    unresolved = {State.UNATTEMPTED, State.FAILED, State.INCONCLUSIVE, State.CONFLICT, State.STALE}
+    conflicts = {f['asset'] for f in snapshot['findings']
+                 if f.get('validation_status') == 'conflicting_observations'
+                 and f['issue_class'] == 'header:x-content-type-options'}
+    candidates = []
+    for check in snapshot['checks']:
+        action = Action.model_validate(check['action'])
+        conflict = action.check == 'header-nosniff' and canonical_target(action.target)[0] in conflicts
+        if check['state'] not in unresolved and not conflict:
+            continue
+        try:
+            validate_scope(scope, action)
+        except ValueError:
+            continue
+        candidates.append({'check_id':check['id'], 'action':action.model_dump(),
+            'state':check['state'], 'policy_verdict':'allowed',
+            'reason':'Conflicting observations need investigation' if conflict else 'Declared question remains unanswered',
+            'execution_mode':'live_approved_http' if action.check == 'header-nosniff' else 'import_only',
+            'proposal_allowed_now':True, 'execution_approval_required_after_proposal':True})
+    return candidates
 
 
 def validate_proposal(proposal, snapshot):
     scope = Scope.model_validate(snapshot['scope'])
     real = {o['id'] for c in snapshot['checks'] for o in c['observations']}
+    eligible = {json.dumps(c['action'], sort_keys=True) for c in eligible_followups(snapshot)}
     for item in proposal.checks:
         validate_scope(scope, item.action)
+        if proposal.mode == 'model' and snapshot['checks'] and json.dumps(item.action.model_dump(), sort_keys=True) not in eligible:
+            raise ValueError('Follow-up must select an eligible declared action; completed checks need recorded conflict before repetition')
         if proposal.mode == 'model' and (not item.alternatives or len(item.drawback.strip()) < 12):
             raise ValueError('Model must explain an alternative and the chosen action drawback')
         selected_tool = CHECKS[item.action.check]['tool']
-        if any(a.tool == selected_tool for a in item.alternatives):
+        if proposal.contract_version == 'legacy-v1' and any(a.tool == selected_tool for a in item.alternatives):
             raise ValueError('Rejected alternative must differ from the selected tool')
         if not set(item.evidence_ids) <= real:
             raise ValueError('Model cited nonexistent observation IDs')
         # Analysis based on observations must cite them; initial plans can cite none.
-        if real and not item.evidence_ids:
+        if real and not item.evidence_ids and proposal.contract_version == 'legacy-v1':
             raise ValueError('Follow-up reasoning must cite stored observations')
+    if proposal.contract_version == 'candidate-v2':
+        from .selection import Basis
+        if len({i.candidate_id for i in proposal.checks}) != len(proposal.checks):
+            raise ValueError('Duplicate selected candidate')
+        # Recheck typed references even if a caller bypasses provider decoding.
+        for item in proposal.checks:
+            candidates={c['check_id']:c for c in eligible_followups(snapshot)}
+            if item.candidate_id not in candidates or candidates[item.candidate_id]['action'] != item.action.model_dump():
+                raise ValueError('Candidate changed or is no longer eligible')
+            for basis in item.basis:
+                Basis.model_validate(basis)
+            if set(item.evidence_ids) != {b['id'] for b in item.basis if b['kind']=='observation'}:
+                raise ValueError('Observation citations must match typed basis')
+            allowed={'check':{item.candidate_id},
+                'observation':{o['id'] for c in snapshot['checks'] if c['action']==item.action.model_dump() for o in c['observations']},
+                'finding':{f['id'] for f in snapshot['findings'] if f['asset']==item.action.target}}
+            if not item.basis or any(b.get('id') not in allowed.get(b.get('kind'),set()) for b in item.basis):
+                raise ValueError('Basis must relate to the selected candidate')
     return proposal
 
 
@@ -99,27 +151,79 @@ SYSTEM_PROMPT = (
     'Return mode=model and valid JSON matching the supplied schema. Interpret the request and choose only registered checks. '
     'Action.check must be one of tcp-port, web-server, web-alerts, header-nosniff. '
     'Never invent a no-action check. If no useful action applies, use checks=[] and explain the limitation. '
+    'For an existing plan, select exact actions from eligible_followups or return checks=[]. '
+    'An empty eligible_followups list means no declared action may be proposed. Never invent a root check to broaden coverage. '
+    'Their policy_verdict is computed by the backend. Do not reinterpret it from path strings. '
+    'allowed_paths are subtree boundaries: / includes /admin unless an exclusion denies it. '
+    'Proposal and execution are separate stages. You are being asked ONLY to propose, never to execute. '
+    'Every eligible candidate may be proposed now without an existing execution approval. '
+    'The analyst reviews the proposal and grants exact execution approval afterward. '
+    'Do not return an empty list solely because execution approval has not yet been granted. '
+    'Return an empty list when no useful eligible action fits the objective or essential information is missing; explain the actual reason. '
+    'No candidate is execution approval. Import-only actions require native evidence, not live execution. '
     'A zero finding count does not answer an unattempted declared check. '
     'Use the exact permitted IP target and scope revision. Never expand authorization or output shell commands. '
     'For each check give a short reason, a relevant alternative tool or no_action with why it was not chosen, and a concrete drawback. '
-    'Cite real observation IDs for follow-up reasoning. Missing coverage is not a vulnerability. '
+    'If alternative.tool is no_action, explain why abstaining leaves this useful declared question unanswered; comparisons with other tools do not explain abstention. '
+    'State actual limitations such as one response at one time; do not invent observed interference or rate limiting. '
+    'When citation_policy.required is true, every proposed check must include at least one listed observation ID in evidence_ids. '
+    'An unattempted target has no direct evidence: cite relevant prior observations as the reason to investigate, '
+    'and explicitly distinguish that context from evidence about the new target. Never imply a finding transfers between routes. '
+    'Empty evidence_ids is allowed only when no observations exist. Missing coverage is not a vulnerability. '
+    'A failed or inconclusive observation does not establish whether a header is present or missing. '
+    'Stale evidence describes a prior condition, not the current condition. Use evidence_semantics to qualify every cited claim. '
     'Do not repeat completed checks without a concrete conflict or failure to investigate. '
     'If the declared questions are answered, return no checks and explain the remaining limits. '
     'Do not invent CVEs, scores or evidence. A proposal cannot grant execution approval.'
 )
 
 
+def evidence_semantics(observation):
+    outcome = observation['receipt']['outcome']
+    freshness = observation.get('freshness') or {}
+    if freshness.get('state') in {'future_timestamp', 'unknown'}:
+        return 'Observation time is unverified; do not claim this establishes the current condition.'
+    if outcome == State.STALE or freshness.get('state') == 'stale':
+        return 'Historical context only; current condition is unknown.'
+    if outcome == State.FINDING:
+        return 'Supports only the recorded condition on this exact target at the observation time.'
+    if outcome == State.NOT_OBSERVED:
+        return 'Recorded condition was not observed on this exact target at that time; other conditions remain unknown.'
+    return 'No interpretable condition result. This may justify investigation but cannot prove presence or absence of a finding.'
+
+
 def model_context(snapshot):
+    observation_ids = [o['id'] for c in snapshot['checks'] for o in c['observations']]
     return {
+        'citation_policy': {'required': bool(observation_ids),
+            'minimum_ids_per_proposed_check': 1 if observation_ids else 0,
+            'meaning': 'Citations support the reason to investigate; they do not prove a finding on an unattempted target.'},
         'registry': {key:dict(value, execution_mode='live_approved_http' if key=='header-nosniff' else 'import_only') for key,value in CHECKS.items()},
         'incomplete_declared_checks': [dict(id=c['id'],action=c['action'],state=c['state']) for c in snapshot['checks'] if c['state'] in {State.UNATTEMPTED,State.FAILED,State.INCONCLUSIVE,State.CONFLICT,State.STALE}][:12],
+        'eligible_followups': eligible_followups(snapshot)[:32],
+        'workflow_stage': 'proposal_only: propose an eligible action now; analyst execution approval comes afterward',
+        'policy_semantics': 'Paths are subtree boundaries. / includes all paths except explicit exclusions. Candidate allowed verdicts come from backend validation; approval is separate.',
         'request': snapshot['request'],
         'scope': snapshot['scope'],
         'checks': [dict(id=c['id'], action=c['action'], condition=c['condition'], state=c['state'],
-            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],freshness=o.get('freshness'),detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
+            observations=[dict(id=o['id'],artifact=o['artifact'],outcome=o['receipt']['outcome'],freshness=o.get('freshness'),evidence_semantics=evidence_semantics(o),detail=o['receipt']['detail'][:1500],source_ref=o['receipt']['source_ref']) for o in c['observations'][-10:]]) for c in snapshot['checks'][:32]],
         'finding_cases': [dict(id=f['id'],asset=f['asset'],issue_class=f['issue_class'],severity=f['severity'],status=f['status'],validation_status=f.get('validation_status','source_reported'),evidence_ids=[e['observation'] for e in f['evidence'][:20]],risk_explanation=f.get('risk_explanation')) for f in snapshot['findings'][:20]],
         'context_limit': 'At most 32 checks, 10 observations each and 1500 characters per observation. Raw artifact bodies are not supplied.'
     }
+
+
+def provider_contract(snapshot):
+    if snapshot['checks']:
+        from .selection import Decision, PROMPT
+        return Decision.model_json_schema(), PROMPT, model_context(snapshot)
+    return model_plan_schema(snapshot), SYSTEM_PROMPT, model_context(snapshot)
+
+
+def decode_plan(raw, snapshot):
+    if snapshot['checks']:
+        from .selection import Decision, resolve
+        return resolve(Decision.model_validate_json(raw), snapshot)
+    return Proposal.model_validate_json(raw)
 
 
 class OllamaProvider:
@@ -182,7 +286,7 @@ class OllamaProvider:
 
 
     def propose(self, snapshot):
-        proposal = Proposal.model_validate_json(self.structured(model_plan_schema(), SYSTEM_PROMPT, model_context(snapshot)))
+        proposal = decode_plan(self.structured(*provider_contract(snapshot)), snapshot)
         if proposal.mode != 'model':
             raise ValueError('Local model returned invalid reasoning provenance')
         return proposal
@@ -203,14 +307,14 @@ class OpenAIProvider:
             'Do not claim an alternative is worse in general; compare it for this exact task. '
             'Scope is already registered: never expand it. No shell, exploitation or invented CVEs. '
             'Use exact supported literal-IP targets. A proposal never grants execution authority.')
-        import json
+        schema, prompt, context = provider_contract(snapshot)
         with httpx.Client(timeout=30, trust_env=False) as client:
             r = client.post('https://api.openai.com/v1/chat/completions', headers={'Authorization':f'Bearer {key}'}, json={
-                'model':model, 'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(model_context(snapshot))}],
-                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':Proposal.model_json_schema()}}})
+                'model':model, 'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(context)}],
+                'response_format':{'type':'json_schema','json_schema':{'name':'assessment_plan','strict':False,'schema':schema}}})
             if r.status_code != 200:
                 raise ValueError(f'Model provider failed (HTTP {r.status_code}); no fallback presented as AI')
-            proposal = Proposal.model_validate_json(r.json()['choices'][0]['message']['content'])
+            proposal = decode_plan(r.json()['choices'][0]['message']['content'], snapshot)
             if proposal.mode != 'model':
                 raise ValueError('Invalid model provenance')
             return proposal
@@ -219,12 +323,17 @@ class OpenAIProvider:
 def plan(store, assessment):
     snapshot = store.snapshot(assessment)
     mode = os.environ.get('COVERAGEPROOF_PROVIDER','development')
-    providers = {'development':DevelopmentProvider, 'openai':OpenAIProvider, 'ollama':OllamaProvider}
+    providers = {'development':DevelopmentProvider, 'openai':OpenAIProvider, 'ollama':OllamaProvider, 'groq':GroqProvider}
     if mode not in providers:
         raise ValueError('Unknown model provider')
+    if mode != 'development' and snapshot['checks'] and not eligible_followups(snapshot):
+        proposal=Proposal(mode='backend',explanation='Backend eligibility check: no declared actions are eligible.',checks=[])
+        store.save_decision(assessment,dict(proposal.model_dump(mode='json'),provider='backend'))
+        return proposal
     provider=providers[mode]()
     try:
         proposal = validate_proposal(provider.propose(snapshot), snapshot)
+        validate_proposal(proposal, store.snapshot(assessment))
     except ValueError as error:
         call=record_call(store,assessment,'planning',provider,'rejected',error)
         with store.tx() as db:

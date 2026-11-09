@@ -25,6 +25,24 @@ def test_known_cross_tool_condition_groups_without_losing_sources():
     assert cases[0]['issue_class']=='header:x-content-type-options'
 
 
+def test_nikto_shared_plugin_id_keeps_distinct_conditions_and_duplicate_sources():
+    headers=['content-security-policy','x-content-type-options','permissions-policy',
+             'referrer-policy','strict-transport-security']
+    rows=[]
+    for index, header in enumerate(headers):
+        item=row(str(index),'nikto:013587',tool='nikto',check='web-server')
+        item['receipt']=item['receipt'].model_copy(update={'detail':f'Suggested security header missing: {header}.'})
+        rows.append(item)
+    duplicate=row('duplicate','nikto:013587',tool='nikto',check='web-server')
+    duplicate['receipt']=duplicate['receipt'].model_copy(update={'detail':rows[0]['receipt'].detail})
+    cases=correlate(rows+[duplicate])
+    assert len(cases)==5
+    assert sum(len(c['evidence']) for c in cases)==6
+    assert len(next(c for c in cases if c['source_observations'][0]['id']=='0')['evidence'])==2
+    assert all(c['source_issue_classes']==['nikto:013587'] for c in cases)
+    assert {c['id'] for c in cases}=={c['id'] for c in correlate(list(reversed(rows+[duplicate])))}
+
+
 @pytest.mark.parametrize('target',['http://127.0.0.2:8765/admin','http://127.0.0.1:8766/admin','http://127.0.0.1:8765/other','http://127.0.0.1:8765/admin?role=other','https://127.0.0.1:8765/admin'])
 def test_different_assets_or_response_locations_stay_separate(target):
     assert len(correlate([row('a','zap:10021:GET:'),row('b','header:x-content-type-options',tool='http',target=target,check='header-nosniff')]))==2
@@ -99,3 +117,18 @@ def test_context_is_displayed_in_ui_pdf_and_model_input(store,scope):
     text='\n'.join(page.extract_text() for page in PdfReader(BytesIO(generate(store,a))).pages)
     assert 'lab_only' in text and 'Source severity first' in text
     assert 'development fixture with no established business impact' in ' '.join(text.split())
+
+
+def test_nikto_import_keeps_methods_separate_and_preserves_native_bytes(store,scope):
+    a=store.create('Synthetic Nikto method regression',scope)
+    store.add_check(a,Action(check='web-server',target='http://127.0.0.1:8765/',scope_revision=1))
+    records=[{'id':'013587','url':'/','msg':'Same synthetic condition','method':m} for m in ['GET','POST']]
+    records.append({'id':'013587','url':'/','msg':'Same synthetic condition'})
+    raw=json.dumps([{'host':'127.0.0.1','ip':'127.0.0.1','port':'8765','start_time':'test','end_time':'test','vulnerabilities':records}]).encode()
+    store.ingest(a,'nikto',raw)
+    snap=store.snapshot(a)
+    assert len(snap['findings'])==3
+    assert {f['source_observations'][0]['http_method'] for f in snap['findings']}=={'GET','POST',None}
+    assert all(f['source_issue_classes']==['nikto:013587'] for f in snap['findings'])
+    from hashlib import sha256
+    assert snap['artifacts'][0]['sha256']==sha256(raw).hexdigest()

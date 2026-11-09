@@ -144,6 +144,7 @@ class Receipt(Strict):
     confidence: str = 'tool-reported'
     observed_at: str | None = None
     remediation: str | None = None
+    http_method: str | None = None
 
 
 def coverage(receipts: list[Receipt], *, stale=False, blocked=False):

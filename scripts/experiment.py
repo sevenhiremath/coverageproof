@@ -36,6 +36,7 @@ try:
     assert [len(s['findings']) for s in before]==[1,1]
     assert before[1]['checks'][1]['state']=='unattempted'
     proposal=plan(store,ids[1])
+    summary['planner_mode']=proposal.mode
     expected=before[1]['checks'][1]['action']
     assert any(p.action.model_dump()==expected for p in proposal.checks), 'Planner did not select the declared admin gap; preserve its decision and investigate'
     check=before[1]['checks'][1]['id'];execute(store,check,store.approve(check,'Owned fixture follow-up'))

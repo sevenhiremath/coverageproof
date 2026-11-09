@@ -1,5 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
+from datetime import datetime
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -8,6 +9,7 @@ from uuid import uuid4
 from .adapters import parse
 from .correlation import correlate, risk_key, explain_risk
 from .freshness import freshness
+from .coverage_view import summarize, REASONS
 from .domain import Action, Scope, Receipt, State, CHECKS, action_fingerprint, canonical_target, coverage, digest, now, validate_scope
 
 
@@ -71,14 +73,24 @@ class Store:
                 'output_sha256':metadata.get('output_sha256'),'validation_errors':metadata.get('validation_errors',[])})
         return call
 
-    def create(self, request, scope):
+    def create(self, request, scope, *, initial_checks=()):
         if not request.strip() or len(request) > 4000:
             raise ValueError('Assessment request must have 1-4000 characters')
         id = uid()
         with self.tx() as db:
             db.execute('INSERT INTO assessments VALUES(?,?,?,?)', (id, request, scope.model_dump_json(), now()))
             self.event(db, id, 'assessment_created', {'environment': scope.environment})
+            for action in initial_checks:
+                validate_scope(scope, action)
+                self._insert_check(db, id, action)
         return id
+
+    def _insert_check(self, db, assessment, action):
+        check_id = uid()
+        db.execute('INSERT INTO checks VALUES(?,?,?,?)',
+                   (check_id, assessment, action.model_dump_json(), now()))
+        self.event(db, assessment, 'check_planned', {'check_id': check_id, 'action': action.model_dump()})
+        return check_id
 
     def context(self, db, assessment):
         row = db.execute('SELECT * FROM assessments WHERE id=?', (assessment,)).fetchone()
@@ -99,10 +111,7 @@ class Store:
                 duplicate = db.execute('SELECT id FROM checks WHERE assessment=? AND action=?', (assessment, action.model_dump_json())).fetchone()
                 if duplicate:
                     return duplicate['id']
-                id = uid()
-                db.execute('INSERT INTO checks VALUES(?,?,?,?)', (id, assessment, action.model_dump_json(), now()))
-                self.event(db, assessment, 'check_planned', {'check_id': id, 'action': action.model_dump()})
-                return id
+                return self._insert_check(db, assessment, action)
         raise ValueError(error)
 
     def check_context(self, db, check_id):
@@ -163,6 +172,31 @@ class Store:
                 if receipt:
                     db.execute('INSERT INTO observations VALUES(?,?,?,?)', (uid(), row['id'], artifact, receipt.model_dump_json()))
             self.event(db, row['assessment'], 'execution_finished', {'attempt': attempt, 'status': status, 'detail': detail})
+
+    def recover_attempt(self, attempt, actor, note, *, workers_stopped=False):
+        """Close an interrupted record only after the operator stops every worker.
+
+        Age is a guard against mistakes, not proof that a process has stopped.
+        No evidence is inferred, approval restored or action retried.
+        """
+        if not workers_stopped:
+            raise ValueError('Stop every worker using this database and confirm workers_stopped')
+        if not 1 <= len(actor.strip()) <= 200 or not 12 <= len(note.strip()) <= 2000:
+            raise ValueError('Analyst identity and recovery reason required')
+        with self.tx() as db:
+            a = db.execute("SELECT * FROM attempts WHERE id=? AND status='running'", (attempt,)).fetchone()
+            if a is None:
+                raise ValueError('Attempt is not running')
+            age = (datetime.fromisoformat(now()) - datetime.fromisoformat(a['created'])).total_seconds()
+            if age < 60:
+                raise ValueError('Wait at least 60 seconds after the recorded start; stop all workers first')
+            row, _, _ = self.check_context(db, a['check_id'])
+            detail = 'Interrupted execution closed by operator; no completed result is inferred. ' + note.strip()
+            db.execute("UPDATE attempts SET status='failed',detail=? WHERE id=?", (detail, attempt))
+            self.event(db, row['assessment'], 'execution_recovered', {
+                'attempt': attempt, 'check_id': a['check_id'], 'status': 'failed',
+                'actor': actor.strip(), 'note': note.strip(), 'workers_stopped_attested': True,
+                'detail': detail})
 
     def ingest(self, assessment, tool, raw):
         try:
@@ -230,7 +264,7 @@ class Store:
                         state = State.NOT_APPLICABLE
                 for o, r in zip(observations, receipts):
                     observation_rows.append({'id':o['id'],'artifact':o['artifact'],'tool':tools[o['artifact']],'receipt':r})
-                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'applicability':applicability, 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
+                checks.append({'id':c['id'], 'action':action.model_dump(), 'condition':CHECKS[action.check]['condition'], 'state':str(state), 'state_reason':REASONS[state], 'applicability':applicability, 'observations':[dict(o, receipt=json.loads(o['receipt'])) for o in observations], 'attempts':attempts})
             findings=correlate(observation_rows)
             by_id={o['id']:o for c in checks for o in c['observations']}
             for f in findings:
@@ -248,6 +282,7 @@ class Store:
             ranked = sorted(findings, key=risk_key)
             snapshot = {'id':assessment, 'request':row['request'], 'created':row['created'], 'scope':scope.model_dump(), 'checks':checks, 'findings':ranked, 'unmatched':[dict(x, receipt=json.loads(x['receipt'])) for x in db.execute('SELECT * FROM unmatched WHERE assessment=? AND linked_check IS NULL ORDER BY created,id', (assessment,))], 'artifacts':[dict(x) for x in db.execute('SELECT id,tool,mode,sha256,created FROM artifacts WHERE assessment=?', (assessment,))], 'approvals':[dict(x) for x in db.execute('SELECT a.* FROM approvals a JOIN checks c ON c.id=a.check_id WHERE c.assessment=?', (assessment,))], 'events':[dict(x, payload=json.loads(x['payload'])) for x in db.execute('SELECT * FROM events WHERE assessment=? ORDER BY created,id', (assessment,))]}
 
+            snapshot['coverage_summary']=summarize(checks)
             from .narrative import basis
             draft=next((e for e in reversed(snapshot['events']) if e['kind']=='report_drafted'),None)
             current=basis(snapshot)
