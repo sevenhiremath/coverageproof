@@ -1,3 +1,21 @@
+# Project status — 9 November 2026
+
+The submission application is on [deploy/render-demo](https://github.com/sevenhiremath/coverageproof/tree/deploy/render-demo).
+
+The recorded demonstration completes an owned HTTP assessment with human approval, evidence inspection and PDF export. Planning in the recording uses labeled development rules.
+
+Nmap, Nikto and ZAP have native result imports. Separate local validation reports record successful genuine Nikto and ZAP imports. These runs do not mean the web application launches the scanners. Groq selected a valid follow-up in a separate successful experiment. Later evaluation encountered rate limits.
+
+The application supports a bounded HTTP header check. Broader scanner execution, a combined multi-tool demonstration and reliable AI behavior across many cases remain incomplete. Findings need analyst review.
+
+The latest checked application commit is 2e88eec9dfb26006bd7c17e43edd28e479a591a1. Its GitHub workflow passed tests, browser and owned-nmap jobs. Documentation changes after this commit do not constitute another application test.
+
+The repository includes a [historical owned HTTP sample report](../samples/current-owned-http/sample-vapt.pdf) and its [recording context](../samples/current-owned-http/README.md). It is separate from the November 9 video assessment.
+
+## Historical development record
+
+The notes below describe earlier checkpoints. Use the status above for the submission overview.
+
 # Current delivery reference — November 4, 2026
 
 See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for the latest priorities and checkpoint evidence. The November 2 status below is historical and must not be used as the current model or scanner result.
