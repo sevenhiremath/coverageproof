@@ -1,4 +1,35 @@
 {% extends 'base.html' %}{% block body %}
+{% if guided %}
+<section class="card" aria-labelledby="guided-walkthrough">
+  <h2 id="guided-walkthrough">Guided walkthrough</h2>
+  <p>Follow one question from an unanswered check to a recorded result. Each live check needs your approval.</p>
+  <div class="grid">
+  {% for c in a.checks %}
+    <div>
+      <h3>{{ c.action.target }}</h3>
+      <p>{{ c.state|replace('_', ' ') }}</p>
+      {% if c.state == 'unattempted' %}
+      <a class="button" href="#check-{{c.id}}">Review and approve this check</a>
+      {% else %}
+      <a href="#check-{{c.id}}">Inspect the result and source evidence</a>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+  <ol>
+    <li>In <a href="#coverage">Coverage</a>, enter your name, approve the root check, then execute it.</li>
+    <li>Open <a href="#planning">Planning</a> and review the proposed follow-up for the unanswered <code>/admin</code> route.</li>
+    <li>Approve and execute the <code>/admin</code> check. Compare the answered checks and finding count, then download the PDF.</li>
+  </ol>
+  {% if a.coverage_summary.unanswered_total == 0 %}
+  <p class="tag">All declared questions have a result or applicability review</p>
+  <p>Review the outcomes below, then open the PDF to see the evidence and assessment limits.</p>
+  <a class="button" href="/assessments/{{a.id}}/report.pdf">Open the assessment PDF</a>
+  {% else %}
+  <p class="muted">{{ a.coverage_summary.unanswered_total }} declared question(s) still need an answer.</p>
+  {% endif %}
+</section>
+{% endif %}
 <p class="muted">ASSESSMENT {{a.id[:10]}}</p><h1>{{a.request}}</h1><div class="row"><span class="tag">{{a.findings|length}} issue candidates</span><span class="tag">{{a.checks|length}} declared checks</span><span class="tag">{{a.scope.environment}}</span><a class="button" href="/assessments/{{a.id}}/report.pdf">Download assessment PDF</a></div><br>
 <section class="card" aria-labelledby="assessment-answer"><h2 id="assessment-answer">What does this assessment establish?</h2>
 <div class="row"><span class="tag">{{a.coverage_summary.answered_total}} answered conditions</span><span class="tag">{{a.coverage_summary.unanswered_total}} unanswered checks</span><span class="tag">{{a.findings|length}} finding candidates</span></div>

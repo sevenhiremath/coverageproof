@@ -1,3 +1,22 @@
+# Submitted demo workflow
+
+The prepared recording lasts about 2 minutes 46 seconds and uses the participant's own narration.
+
+1. Explain how a failed or unattempted check can leave an assessment incomplete.
+2. Introduce CoverageProof and inspect the home-page finding and pending admin check.
+3. Request the next check using labeled development planning.
+4. Approve the exact admin HTTP check and execute it.
+5. Inspect the result and the unchanged finding count.
+6. Inspect evidence and download the assessment PDF.
+
+The recording demonstrates the HTTP workflow. Groq and native scanner imports were evaluated separately. The presentation follows the organizer's nine required sections in order.
+
+The form asks for a public-view Google Drive presentation link, a public-view Google Drive video link and the GitHub repository URL. Review permissions before submitting.
+
+## Earlier planning notes
+
+The following outline is historical and includes features that are absent from the finished recording.
+
 # Demo and presentation draft
 
 Current delivery order and official rubric: [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Prioritize the complete assessment-agent journey, genuine cross-tool correlation and defensible risk before stretch retesting.
