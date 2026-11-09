@@ -2,6 +2,8 @@
 
 A security assessment report that shows findings and unfinished checks.
 
+[Open the application](https://coverageproof-demo.onrender.com/) · [Read the November 9 assessment report](samples/current-owned-http/assessment-nov9.pdf)
+
 ## The problem
 
 An analyst may have several scanner reports and still not know what was actually checked. A missing result could mean a check found nothing, failed or never ran. Combining findings alone leaves that question unanswered.
@@ -40,10 +42,10 @@ Findings retain source references and raw artifact hashes. Analysts can review c
 
 ## Run the current demo application
 
-The hosted application uses the `deploy/render-demo` branch. Python 3.11 or later is required.
+Python 3.11 or later is required. The repository's default branch contains the submission application.
 
 ```bash
-git clone --branch deploy/render-demo https://github.com/sevenhiremath/coverageproof.git
+git clone https://github.com/sevenhiremath/coverageproof.git
 cd coverageproof
 python -m venv .venv
 ```
@@ -69,13 +71,13 @@ python -m uvicorn coverageproof.app:app --host 127.0.0.1 --port 8000
 
 Open http://127.0.0.1:8000.
 
-These commands install application dependencies only. Configure environment variables before starting the app; settings are listed in [.env.example](https://github.com/sevenhiremath/coverageproof/blob/deploy/render-demo/.env.example). The default local database is `data/coverageproof.sqlite`.
+These commands install application dependencies only. Configure environment variables before starting the app; settings are listed in [.env.example](https://github.com/sevenhiremath/coverageproof/blob/main/.env.example). The default local database is `data/coverageproof.sqlite`.
 
 ## Planning
 
 Development mode uses explicitly labeled rules. It does not call an AI model.
 
-The demo branch also supports Groq planning. Set `COVERAGEPROOF_PROVIDER=groq`, `GROQ_MODEL=openai/gpt-oss-120b` and your private `GROQ_API_KEY` before starting the application. The backend validates proposed checks and evidence references. An AI proposal is not permission to execute an action.
+The application supports Groq planning. Set `COVERAGEPROOF_PROVIDER=groq`, `GROQ_MODEL=openai/gpt-oss-120b` and your private `GROQ_API_KEY` before starting the application. The backend validates proposed checks and evidence references. An AI proposal is not permission to execute an action.
 
 The submitted recording uses development planning. Groq was evaluated separately. Provider failures and rate limits remain limitations.
 
@@ -99,11 +101,8 @@ Python, FastAPI, Jinja2, HTML/CSS, SQLite, Groq and ReportLab.
 - Testing must remain inside an explicitly authorized scope. Organizer evaluation authorization is separate from the owned development fixture.
 
 [Hosted demo](https://coverageproof-demo.onrender.com/)  
-[Application source](https://github.com/sevenhiremath/coverageproof/tree/deploy/render-demo)  
+[Application source](https://github.com/sevenhiremath/coverageproof)  
 [Dependency acknowledgments](THIRD_PARTY.md)
 
 Built by Swayam Hiremath for DataOps Innovation Hackathon 2026, PS-1. AI-assisted implementation.
 
-Latest November 9 assessment PDF: samples/current-owned-http/assessment-nov9.pdf
-
-[November 9 assessment report](samples/current-owned-http/assessment-nov9.pdf)
