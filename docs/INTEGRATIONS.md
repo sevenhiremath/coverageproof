@@ -1,14 +1,14 @@
 # Integration truth table
 
-Native imports are permitted by PS-1 p3 §4 and p5 §6. This is an engineering checkpoint, not a claim that all mandatory integrations have passed genuine-output verification.
+Native imports are permitted by PS-1 p3 §4 and p5 §6. The website supports native result imports. Scanner execution takes place separately.
 
 | Tool | Status | Supported format/version | Verification | Limitations |
 |---|---|---|---|---|
 | Nmap | Import-only (parser implemented) | XML xmloutputversion 1.04 / 1.05, scanner=nmap | Genuine Nmap 7.93 XML 1.05 from owned isolated GitHub fixture, plus schema fixtures | One genuine single-port sample only; no extraports inference, NSE or vulnerability inference; XML 1.04 is schema-tested only |
-| Nikto | Import-only (parser implemented) | Current multi-host JSON array: host/ip/port/start_time/end_time/vulnerabilities | Current upstream exporter inspected; schema fixtures | Legacy objects rejected; exporter lacks version field, cannot attest tool version; genuine output pending; no negative coverage inferred |
-| OWASP ZAP | Import-only (parser implemented) | ZAP 2.x traditional JSON, site[]/alerts[]/instances[] | Official sample schema inspected; schema fixtures | Dev/unknown versions rejected; alert exports do not prove traversal/rule completion; genuine output pending |
+| Nikto | Import-only (parser implemented) | Current multi-host JSON array: host/ip/port/start_time/end_time/vulnerabilities | Genuine Nikto 2.6.1 JSON imported in separately reported owned local validation | Legacy objects rejected; exporter lacks version field, cannot attest tool version; no negative coverage inferred |
+| OWASP ZAP | Import-only (parser implemented) | ZAP 2.x traditional JSON, site[]/alerts[]/instances[] | Genuine ZAP 2.17.0 JSON imported in separately reported owned local validation | Dev/unknown versions rejected; alert exports do not prove traversal/rule completion |
 | Nessus | Unsupported | None | No adapter | No commercial availability claimed |
-| OpenVAS / Greenbone | Planned | None implemented | None | Outside baseline |
+| OpenVAS / Greenbone | Unsupported | None implemented | None | Outside baseline |
 | Burp Suite | Unsupported | None | No adapter | Licensing/API availability not assumed |
 | Metasploit | Unsupported | None | No adapter | No autonomous or active exploitation runner |
 
